@@ -951,6 +951,24 @@ const CARD = (uid, name) =>
     log(doc.querySelectorAll('.v-card-x')[0].getAttribute('data-bbm') === 'block', '顶栏存在时卡片照常按形状命中');
   }
 
+  /* ---------------- 16. 版本号：四处必须一致，忘改就红 ---------------- */
+  {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+    const meta = SCRIPT.match(/^\/\/ @version\s+([0-9]+\.[0-9]+\.[0-9]+)/m);
+    const fallback = SCRIPT.match(/\|\| '([0-9]+\.[0-9]+\.[0-9]+)'/);
+    const changelog = fs.readFileSync(
+      path.join(__dirname, '..', 'tampermonkey', 'CHANGELOG.md'),
+      'utf8'
+    );
+    log(!!meta && meta[1] === pkg.version, '版本：@version 与 package.json 一致', meta && meta[1]);
+    log(
+      !!fallback && fallback[1] === pkg.version,
+      '版本：SCRIPT_VERSION 兜底值与 package.json 一致',
+      fallback && fallback[1]
+    );
+    log(changelog.includes('## ' + pkg.version), '版本：CHANGELOG 有当前版本条目', pkg.version);
+  }
+
   // jsdom 的计时器会让进程常驻，断言跑完直接收工
   process.exit(process.exitCode || 0);
 })();

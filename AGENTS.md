@@ -25,7 +25,7 @@ tampermonkey/
 | 分支 | 用途 | 规矩 |
 |---|---|---|
 | `main` | 只放**已发布版本** | 不直接往上提交实验；正式发版时才把 `dev` 快进合并过来并打 tag，其余时间保持不动 |
-| `dev` | 日常开发与实验 | 一切改动先来这里；验收、跑测试都在这里完成 |
+| `dev` | 日常开发与实验 | 一切改动先来这里；每次改动顺手递增版本号，验收、跑测试都在这里完成 |
 
 `@updateURL` 指向 jsDelivr 的 `@main`，所以“main 稳定”等于“用户只在发版时拿到更新”。实验改动必须走 `dev`，否则用户会提前拿到未经验证的版本。
 
@@ -97,16 +97,20 @@ npm run lint
 npm test
 ```
 
-- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **184 PASS / 0 FAIL**。
+- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **187 PASS / 0 FAIL**。
 - 回归就是仓库里的 `tools/block.test.cjs`：jsdom 把整份脚本跑起来，喂假存储 / 假菜单 / 假 prompt，覆盖开关、翻转换算、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密、A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、`?bbm=debug` 静默性。断言以 `PASS` / `FAIL` 开头，失败时退出码非 0。
 - 加断言就照现有风格在后面续一组：`log(条件, '断言名', '补充值')`，别改已有断言名，方便对比历史基线。
 - ESLint 只约束 `tampermonkey/*.user.js`；`tools/` 是 Node 脚本，不在 lint 范围，写它时按 Node 习惯来（`require`、`fs`、`__dirname`）。
-- 改逻辑必须让 `npm test` 仍是 184 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
+- 改逻辑必须让 `npm test` 仍是 187 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
 - 验证“装了却不生效”的经典三连：篡改猴「允许的站点」是否含 `www.bilibili.com`；地址是否是首页 `/` 或 `/index.html`；文件是不是从 jsDelivr 装的（raw 是 `text/plain`，不会触发安装）。
 
 ## 6. 发布流程
 
-1. 改 `@version`（同时改 `scriptVersion` 兜底值）。
+**版本号只升不降，每次改动都要递增。** 新功能或行为变化记 minor（`1.1.0`），修 bug 记 patch（`1.1.1`），破坏性重写才动 major。一次改动没升版本号，就不算完成。
+
+改版本号要同时改四处，缺一处 `npm test` 会红：`@version`、`SCRIPT_VERSION` 的兜底常量、`package.json`（含 `package-lock.json` 的根 `version`）、`CHANGELOG.md` 顶部新条目。
+
+1. 改 `@version`（同时改 `scriptVersion` 兜底值、`package.json`、追加 CHANGELOG 条目）。
 2. 更新 `CHANGELOG.md` 顶部条目的日期与内容；README 里若涉及行为变化同步改。
 3. `node --check` + `npm run lint` + 回归全过（在 `dev` 上）。
 4. `git push origin dev`，确认远端 `dev` 就是待发布内容。

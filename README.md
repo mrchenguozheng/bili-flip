@@ -2,7 +2,7 @@
 
 一个只改「显示」的 Tampermonkey 用户脚本：把 B 站首页里不想看的卡片翻过来，不让它们好端端地待在那儿；再给你一份只存本机的 UP 屏蔽名单。
 
-![Tampermonkey](https://img.shields.io/badge/Tampermonkey-1.0.0-00b0ff) ![platform](https://img.shields.io/badge/platform-Edge%20%7C%20Chrome-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green)
+![Tampermonkey](https://img.shields.io/badge/Tampermonkey-1.1.0-00b0ff) ![platform](https://img.shields.io/badge/platform-Edge%20%7C%20Chrome-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > **目标管理器：Tampermonkey（Edge / Chrome）。** 只用 `GM_*` 老接口与原生菜单。未适配 Violentmonkey（其 `GM_unregisterMenuCommand` 按菜单文字注销，本脚本按 id），也未适配 Greasemonkey 4（没有 `GM_registerMenuCommand`）。
 
@@ -62,7 +62,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 
 分支：`dev` 是日常开发与实验所在，`main` 只在发版时快进合并一次并打 tag。想提前试实验版，把地址里的 `@main` 换成 `@dev` 即可（同样会有分支缓存）。
 
-发新版时：改 `@version` → 提交 → `git tag <版本号>` → 推 tag，那条 `@<版本号>` 地址就自动可用（仓库目前有 `1.0.0` 这个 tag）。
+发新版时：改 `@version` → 提交 → `git tag <版本号>` → 推 tag，那条 `@<版本号>` 地址就自动可用（仓库目前有 `1.0.0` 这个 tag；`1.1.0` 随发布打 tag）。
 
 ## 使用
 
@@ -175,7 +175,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 npm install
 npm run lint       # 检查写法
 npm run lint:fix   # 顺手修可自动修的
-npm test           # jsdom 回归，当前 184 条断言
+npm test           # jsdom 回归，当前 187 条断言
 ```
 
 规则只有几条硬约束：`@eslint/js` recommended 全套、`no-multi-spaces`（对齐的行尾注释只能有一个空格）、`no-empty` 放行空 `catch`、`no-var`、`no-unused-vars` 不追究未用参数。篡改猴注入的全局（`GM_getValue` 等）在 `eslint.config.mjs` 里按 `@grant` 列表声明，浏览器全局取 `globals.browser`。
@@ -194,7 +194,7 @@ npm test           # jsdom 回归，当前 184 条断言
 
 ## 变更记录
 
-见 [`tampermonkey/CHANGELOG.md`](tampermonkey/CHANGELOG.md)。当前版本 1.0.0。
+见 [`tampermonkey/CHANGELOG.md`](tampermonkey/CHANGELOG.md)。当前版本 1.1.0。
 
 ## 许可
 

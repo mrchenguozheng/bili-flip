@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         B站首页卡片翻转与UP屏蔽
 // @namespace    https://github.com/mrchenguozheng/Bilibili-Home-Flip-Block
-// @version      1.0.0
+// @version      1.1.0
 // @license      MIT
 // @homepageURL  https://github.com/mrchenguozheng/Bilibili-Home-Flip-Block
 // @supportURL   https://github.com/mrchenguozheng/Bilibili-Home-Flip-Block/issues
@@ -546,7 +546,7 @@
   const TAGS = DEFAULT_TAGS.slice(); // 固定表，运行期不再增删
   /** 版本号取管理器读到的 @version，缺失时回落本文件的常量 */
   const SCRIPT_VERSION =
-    (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version) || '1.0.0';
+    (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version) || '1.1.0';
   const TAG_SCHEMA_V = 1; // 标签描述结构的版本，改字段含义时才 +1
 
   /** 导出用的标签描述：短名 → 显示写法 + 它收编了哪些近义说法。
