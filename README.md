@@ -2,7 +2,7 @@
 
 一个只改「显示」的 Tampermonkey 用户脚本：把 B 站首页里不想看的卡片翻过来，不让它们好端端地待在那儿；再给你一份只存本机的 UP 屏蔽名单。
 
-![Tampermonkey](https://img.shields.io/badge/Tampermonkey-1.0.0-00b0ff) ![platform](https://img.shields.io/badge/platform-Edge%20%7C%20Chrome-lightgrey) ![license](https://img.shields.io/badge/license-unlicensed-lightgrey)
+![Tampermonkey](https://img.shields.io/badge/Tampermonkey-1.0.0-00b0ff) ![platform](https://img.shields.io/badge/platform-Edge%20%7C%20Chrome-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > **目标管理器：Tampermonkey（Edge / Chrome）。** 只用 `GM_*` 老接口与原生菜单。未适配 Violentmonkey（其 `GM_unregisterMenuCommand` 按菜单文字注销，本脚本按 id），也未适配 Greasemonkey 4（没有 `GM_registerMenuCommand`）。
 
@@ -25,14 +25,18 @@ tampermonkey/
 
 ## 安装
 
+**[一键安装（raw）](https://raw.githubusercontent.com/mrchenguozheng/Bilibili-Home-Flip-Block/main/tampermonkey/bilibili-home-flip-block.user.js)** —— 在装了 Tampermonkey 的 Edge / Chrome 里点开，会直接进入安装页。
+
 1. Edge / Chrome 安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 打开 [`tampermonkey/bilibili-home-flip-block.user.js`](tampermonkey/bilibili-home-flip-block.user.js) 的 raw 地址，Tampermonkey 会直接弹出安装页；也可以复制整份内容，在扩展里「添加新脚本」后粘贴保存。
+2. 打开上面的 raw 地址，Tampermonkey 会弹出安装页；也可以复制整份内容，在扩展里「添加新脚本」后粘贴保存。
 3. 打开 `https://www.bilibili.com/` 刷新。
 
 安装后检查两处，这是“脚本装了却毫无反应”的两个常见原因：
 
 - 篡改猴的**站点访问权限**要包含 `www.bilibili.com`（Edge 里若“允许的站点”只有 `cdn.jsdelivr.net`，脚本不会执行）。
 - 首页地址要落在 `/` 或 `/index.html`；其它页面只有视频播放页会多出屏蔽名单入口，翻转不生效。
+
+脚本头部的 `@updateURL` / `@downloadURL` 指向同一份 raw 地址，以后仓库里更新版本，篡改猴会提示升级，不用手动重装。
 
 ## 使用
 
@@ -80,7 +84,7 @@ tampermonkey/
 | 键 | 内容 | 何时读 |
 |---|---|---|
 | `bbm:blocked` | 整份名单 `[{uid, name, bvid, title, tags, at}]` | 启动、打开菜单、导入、清空、加/解人 |
-| `bbm:blocked:uids` | 一行 `v1|条数|uid,uid,...` 的索引 | 后台轮询，只读这个 |
+| `bbm:blocked:uids` | 一行 `v1\|条数\|uid,uid,...` 的索引 | 后台轮询，只读这个 |
 
 优先用 GM 存储（与 bilibili.com 的站点数据隔离，清站点 cookie 不会带走名单）；没有 GM 时退 `localStorage`。
 
@@ -148,7 +152,9 @@ tampermonkey/
 
 ## 许可
 
-仓库暂未附带许可证文件，默认保留所有权利（All rights reserved）。
+MIT，见 [`LICENSE`](LICENSE)。脚本头部也写了 `@license MIT`，篡改猴的脚本详情页会显示出来。
+
+可以拿去改、拿去发，只需保留版权声明与许可原文。
 
 ---
 
@@ -172,8 +178,10 @@ It does not download, intercept, or rewrite any request, and does not restructur
 ## Install
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in Edge or Chrome.
-2. Open the raw URL of `tampermonkey/bilibili-home-flip-block.user.js`; Tampermonkey will offer to install it.
+2. Open the [raw file](https://raw.githubusercontent.com/mrchenguozheng/Bilibili-Home-Flip-Block/main/tampermonkey/bilibili-home-flip-block.user.js); Tampermonkey will offer to install it.
 3. Reload `https://www.bilibili.com/`.
+
+`@updateURL` and `@downloadURL` point at the same raw URL, so version bumps show up as normal Tampermonkey updates.
 
 Two things to check if nothing happens: the extension's site access must include `www.bilibili.com`, and the page must be the home feed (`/` or `/index.html`).
 
@@ -184,3 +192,7 @@ The blocklist, its tags, BV ids and video titles never leave your machine. Plain
 ## Compatibility
 
 Verified on Edge + Tampermonkey. Not adapted for Violentmonkey or Greasemonkey 4.
+
+## License
+
+MIT, see [`LICENSE`](LICENSE).

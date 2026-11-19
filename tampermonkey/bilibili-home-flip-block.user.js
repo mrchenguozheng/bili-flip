@@ -1,7 +1,12 @@
 // ==UserScript==
 // @name         B站首页卡片翻转与UP屏蔽
-// @namespace    bilibili-home-flip-block
+// @namespace    https://github.com/mrchenguozheng/Bilibili-Home-Flip-Block
 // @version      1.0.0
+// @license      MIT
+// @homepageURL  https://github.com/mrchenguozheng/Bilibili-Home-Flip-Block
+// @supportURL   https://github.com/mrchenguozheng/Bilibili-Home-Flip-Block/issues
+// @updateURL    https://raw.githubusercontent.com/mrchenguozheng/Bilibili-Home-Flip-Block/main/tampermonkey/bilibili-home-flip-block.user.js
+// @downloadURL  https://raw.githubusercontent.com/mrchenguozheng/Bilibili-Home-Flip-Block/main/tampermonkey/bilibili-home-flip-block.user.js
 // @description  首页三类卡片各带两个独立开关（首页广告位上下翻转、首页推荐位与首页直播位左右翻转，每类都能单独关掉翻转、单独关掉禁止点击），外加一份本地 UP 屏蔽名单：名单内的 UP 出现在首页时其卡片翻转、可禁止点击。屏蔽入口在视频播放页菜单，点中任一屏蔽理由即入名单；名单只在本地，导出分明文两档（只含 uid / 名字 / 时间）与口令加密一档（唯一能带出 BV 与标题的方式）。没有自绘面板，只有菜单项与原生 prompt/confirm；URL 带 ?bbm=off 本页全关。
 // @match        *://*.bilibili.com/*
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHJlY3QgeD0iOCIgeT0iMTAiIHdpZHRoPSIzMiIgaGVpZ2h0PSIyNCIgcng9IjYiIGZpbGw9IiNmYjcyOTkiLz48cGF0aCBkPSJNMTQgMzRsLTQgN00zNCAzNGw0IDciIHN0cm9rZT0iI2ZiNzI5OSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48ZWxsaXBzZSBjeD0iMTkiIGN5PSIyNS42IiByeD0iMi40IiByeT0iMy42IiBmaWxsPSIjZmZmIi8+PGVsbGlwc2UgY3g9IjI5IiBjeT0iMjUuNiIgcng9IjIuNCIgcnk9IjMuNiIgZmlsbD0iI2ZmZiIvPjxwYXRoIGQ9Ik0yMS41IDEwaDVMMjQgMTMuNXoiIGZpbGw9IiNmZmYiLz48L3N2Zz4=
