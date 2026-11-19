@@ -170,7 +170,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@1.0.0/tampermonkey/bilibili
 
 - 只在 Edge + Tampermonkey 上人工验证过菜单与下载；其余行为由 jsdom 断言覆盖。
 - 首页改版会让选择器失效：三类卡片各有兜底路径（含上文形状兜底），连续三次扫描抛错会断开观察、摘掉全部标记，把页面还给 B 站。
-- 形状兜底只保证「认出卡片、整卡处理」，认不出的一律不动；类名改版后菜单里会多出一行 `⚠️` 提示，正常页面没有这一行。带 `?bbm=debug` 时控制台打一行扫描诊断（只有计数，不打名单内容）。
+- 形状兜底只保证「认出卡片、整卡处理」，认不出的一律不动；类名改版后菜单里会多出一行 `⚠️` 提示，正常页面没有这一行。带 `?bbm=debug` 时控制台打一行扫描诊断：命中计数 + 每类最多 3 个**结构指纹**（标签名与前三个 class，例如 `class div.floor-single-card`、`shape div.v-card-x`），能看出改版后命中的是哪一层，但不含任何标题、BV、链接或名单内容。
 - 加密包的强度取决于口令。12 位且符合规则的人造口令（“词+年+符号”这类结构）面对定向攻击仍可能被模式字典在数小时内试完；真随机的 12 位则是物理上做不完的量级。
 - 文件大小与条目数量大致成正比，加密包不隐藏“名单有几条”。
 - 名单条数影响的是存储读写与内存，不影响扫描频率；一万条量级仍属轻负载，十万条开始明显变重。
@@ -183,7 +183,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@1.0.0/tampermonkey/bilibili
 npm install
 npm run lint            # 检查写法
 npm run lint:fix        # 顺手修可自动修的
-npm test                # jsdom 回归，当前 199 条断言
+npm test                # jsdom 回归，当前 206 条断言
 npm run bump -- minor "这次改了什么"   # 版本号一次写齐：脚本、兜底常量、package.json、lock、CHANGELOG
 npm run version:check   # 只校验四处版本是否一致，不一致退出码非 0
 ```

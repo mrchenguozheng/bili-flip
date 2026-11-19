@@ -960,6 +960,33 @@ const CARD = (uid, name) =>
     log(!loud.allLogs().includes('12345'), '诊断不回显 uid');
   }
 
+  /* ---------------- 14b. 调试指纹：只给 tag + class，不给标题 / BV ---------------- */
+  {
+    const store = { 'bbm:blocked': [{ uid: '12345', name: '张三', at: 1 }] };
+    const secret = '秘密标题不该出现在日志里';
+    const html =
+      '<body>' +
+      '<div class="bili-video-card"><span class="badge">广告</span>' +
+      '<div class="bili-video-card__info--tit">' + secret + '</div></div>' +
+      '<div class="bili-video-card">' +
+      '<a class="bili-video-card__info--owner" href="//space.bilibili.com/12345">张三</a>' +
+      '<div class="bili-video-card__info--tit">t</div></div>' +
+      '</body>';
+    const loud = boot({ url: 'https://www.bilibili.com/?bbm=debug', html, store });
+    await sleep(200);
+    const out = loud.allLogs();
+    log(out.includes('指纹'), 'debug：诊断里带结构指纹');
+    log(/div\.bili-video-card/.test(out), 'debug：指纹写出标签名 + class', (out.match(/div\.bili-video-card[^"|]*/) || [''])[0]);
+    log(!out.includes(secret), 'debug：指纹不含标题文字');
+    log(!out.includes('BV'), 'debug：指纹不含 BV');
+    log(!out.includes('space.bilibili.com'), 'debug：指纹不含链接');
+    log(!out.includes('张三'), 'debug：指纹不含 UP 名字');
+
+    const quiet = boot({ url: 'https://www.bilibili.com/', html, store });
+    await sleep(200);
+    log(!quiet.allLogs().includes('指纹'), '默认模式：一句指纹都不打');
+  }
+
   /* ---------------- 15. 顶栏里的直播/视频入口不是卡片 ---------------- */
   {
     const store = { 'bbm:blocked': [{ uid: '12345', name: '张三', at: 1 }] };

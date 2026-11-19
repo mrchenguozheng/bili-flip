@@ -390,6 +390,10 @@
   let menuDirty = false; // 诊断结论或计数变了，等下一次心跳重画菜单
   let flipSets = { live: new Set(), floor: new Set() }; // 上一轮收集到的直播 / 推荐位卡片，给菜单计数用
   let statKey = ''; // 上一轮八档计数拼成的串，变了才重画菜单
+  /* ?bbm=debug 时才填：每类最多 3 个样本的结构指纹（tag + class，不含任何文字），
+     用来判断改版后命中的是哪一层，而不是把用户看过的标题、BV 打出来 */
+  const DBG_MAX = 3;
+  let dbgSamples = { ad: [], floor: [], live: [], block: [] };
 
   /** opts.flip(el) / opts.lock(el)：逐张卡决定这一轮要翻、要锁，
       不传就按"这一类两项都开"处理（兼容旧调用） */
@@ -438,7 +442,9 @@
 
     // 直播卡片（类名）；翻转关了但禁点还开着也要收进来
     if (ENABLE.live || ENABLE.liveLock) {
-      document.querySelectorAll(LIVE_CARD).forEach((el) => { all.add(el); liveSet.add(el); });
+      document.querySelectorAll(LIVE_CARD).forEach((el) => {
+        all.add(el); liveSet.add(el); note('live', 'class', el);
+      });
 
       // 直播卡片（链接兜底）：先按老类名容器取；类名整批失效时再按形状爬。
       // 形状兜底只在首页、且确实一张类名卡片都没有时才跑——
@@ -449,6 +455,7 @@
         if (!card) return;
         all.add(card);
         liveSet.add(card);
+        note('live', missing ? 'shape' : 'link', card);
         if (missing) shapeHits += 1;
       });
     }
@@ -460,12 +467,12 @@
         const label = (t.textContent || '').trim();
         if (FLOOR_LABELS.indexOf(label) === -1) return;
         const card = outerFloorCard(t);
-        if (card) { all.add(card); floorSet.add(card); }
+        if (card) { all.add(card); floorSet.add(card); note('floor', 'floor-title', card); }
       });
 
       document.querySelectorAll('[data-mod^="partition_recommend"]').forEach((el) => {
         const card = outerFloorCard(el) || (isHomeFeed() ? shapeCardFrom(el) : null);
-        if (card) { all.add(card); floorSet.add(card); }
+        if (card) { all.add(card); floorSet.add(card); note('floor', 'data-mod', card); }
       });
     }
 
@@ -476,7 +483,9 @@
     const next = new Set();
     if (!ENABLE.ad && !ENABLE.adLock) return next; // 两项都关时 next 恒空，hitsAd 会在下一轮被清干净
     document.querySelectorAll(CARD).forEach((card) => {
-      if (hasAdWord(card)) next.add(card);
+      if (!hasAdWord(card)) return;
+      next.add(card);
+      note('ad', 'class', card);
     });
     if (isHomeFeed() && cardClassMissing()) {
       // 类名失效时的广告识别：仍然只认「整串等于广告」的文本节点，再按形状找卡片
@@ -488,7 +497,7 @@
         const p = node.parentElement;
         if (!p || (p.textContent || '').trim() !== '广告') continue;
         const card = shapeAdCardFrom(p);
-        if (card) { next.add(card); shapeHits += 1; }
+        if (card) { next.add(card); note('ad', 'shape', card); shapeHits += 1; }
       }
     }
     return next;
@@ -762,7 +771,9 @@
     if ((!ENABLE.block && !ENABLE.blockLock) || !BLOCK_UIDS.size || !isHomeFeed()) return next;
     document.querySelectorAll(CARD).forEach((card) => {
       const uid = cardUid(card);
-      if (uid && BLOCK_UIDS.has(uid)) next.add(card);
+      if (!uid || !BLOCK_UIDS.has(uid)) return;
+      next.add(card);
+      note('block', 'class', card);
     });
     if (cardClassMissing()) {
       // 类名失效：从视频链接爬回卡片，再按 owner 链接取 uid，判定标准不变
@@ -770,7 +781,11 @@
         const card = shapeCardFrom(a);
         if (!card) return;
         const uid = cardUid(card);
-        if (uid && BLOCK_UIDS.has(uid)) { next.add(card); shapeHits += 1; }
+        if (uid && BLOCK_UIDS.has(uid)) {
+          next.add(card);
+          note('block', 'shape', card);
+          shapeHits += 1;
+        }
       });
     }
     return next;
@@ -1324,8 +1339,29 @@
   let failing = 0;
   let stopped = false;
 
+  /* ---------------------------------------------------------
+   * 调试指纹（只在 ?bbm=debug 下用）
+   * 只写标签名 + 前三个 class，截断到 24 字符；不取 textContent、
+   * 不取 href —— 那是"你看过什么"，控制台会留痕，不进日志。
+   * ------------------------------------------------------- */
+  function fingerprint(el) {
+    if (!el || !el.tagName) return '?';
+    const cls = (el.getAttribute('class') || '').trim().split(/\s+/)
+      .filter(Boolean).slice(0, 3).map((c) => c.slice(0, 24));
+    return el.tagName.toLowerCase() + (cls.length ? '.' + cls.join('.') : '');
+  }
+
+  /** DEBUG 下记一条样本：why 说明是哪条规则认出来的，最多 DBG_MAX 条 */
+  function note(kind, why, el) {
+    if (!DEBUG) return;
+    const arr = dbgSamples[kind];
+    if (!arr || arr.length >= DBG_MAX) return;
+    arr.push(why + ' ' + fingerprint(el));
+  }
+
   function scan() {
     shapeHits = 0;
+    if (DEBUG) dbgSamples = { ad: [], floor: [], live: [], block: [] };
     paint(collectAdCards(), 'ad', {
       flip: () => !!ENABLE.ad,
       lock: () => !!ENABLE.adLock,
@@ -1359,6 +1395,13 @@
         推荐位命中: countOf('floor'),
         直播位命中: countOf('live'),
         屏蔽UP命中: countOf('block'),
+        // 结构指纹：只有 tag + class，样本上限 3；用来对照改版前后命中的是哪一层
+        指纹: {
+          广告: dbgSamples.ad.join(' | '),
+          推荐位: dbgSamples.floor.join(' | '),
+          直播位: dbgSamples.live.join(' | '),
+          屏蔽UP: dbgSamples.block.join(' | '),
+        },
       });
     }
   }
