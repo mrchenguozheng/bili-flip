@@ -32,7 +32,7 @@ tampermonkey/
 
 ## 安装
 
-**[一键安装](https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@main/tampermonkey/bilibili-home-flip-block.user.js)** —— 在装了 Tampermonkey 的 Edge / Chrome 里点开，会直接进入安装页。
+**[一键安装](https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@main/tampermonkey/bilibili-home-flip-block.user.js)** —— 在装了 Tampermonkey 的 Edge / Chrome 里点开，会直接进入安装页。
 
 1. Edge / Chrome 安装 [Tampermonkey](https://www.tampermonkey.net/)。
 2. 打开上面的链接，Tampermonkey 会弹出安装页；也可以复制整份内容，在扩展里「添加新脚本」后粘贴保存。
@@ -55,7 +55,7 @@ tampermonkey/
 | 锁定某个版本 | `...@1.0.0/tampermonkey/bilibili-home-flip-block.user.js` | 按 git tag 取，内容永不变化、没有缓存问题 |
 
 ```
-https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tampermonkey/bilibili-home-flip-block.user.js
+https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@1.0.0/tampermonkey/bilibili-home-flip-block.user.js
 ```
 
 锁版本地址适合发给别人复现同一份行为、或者在排查“是不是新版引入的问题”时退回旧版。脚本头部仍用 `@main`：`@updateURL` 若也写成固定版本，篡改猴就永远只会看到那一个版本，等于关掉了自动更新。
@@ -229,14 +229,14 @@ It does not download, intercept, or rewrite any request, and does not restructur
 ## Install
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in Edge or Chrome.
-2. Open the [install link](https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@main/tampermonkey/bilibili-home-flip-block.user.js); Tampermonkey will offer to install it.
+2. Open the [install link](https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@main/tampermonkey/bilibili-home-flip-block.user.js); Tampermonkey will offer to install it.
 3. Reload `https://www.bilibili.com/`.
 
 GitHub's raw URL serves `text/plain` with `nosniff`, so Tampermonkey never intercepts it; jsDelivr serves `application/javascript`, which triggers the install page.
 
 `@updateURL` and `@downloadURL` point at the same jsDelivr URL, so version bumps show up as normal Tampermonkey updates. jsDelivr caches branch refs such as `@main` (up to ~12 hours); use the [purge tool](https://www.jsdelivr.com/tools/purge) when a release must be reachable immediately.
 
-A tag-pinned URL is available for reproducible installs: `https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tampermonkey/bilibili-home-flip-block.user.js`. Tags are immutable and uncached, but do not use one in `@updateURL` — it would freeze updates.
+A tag-pinned URL is available for reproducible installs: `https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@1.0.0/tampermonkey/bilibili-home-flip-block.user.js`. Tags are immutable and uncached, but do not use one in `@updateURL` — it would freeze updates.
 
 Two things to check if nothing happens: the extension's site access must include `www.bilibili.com`, and the page must be the home feed (`/` or `/index.html`).
 

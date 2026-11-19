@@ -10,6 +10,7 @@
 - 新增 `?bbm=debug`：带参数时控制台打一行扫描诊断（只有计数，不含 uid / 标题 / 名单）。
 - 回归测试扩到 189 条：补 A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、顶栏误伤、`?bbm=debug` 静默性，以及版本号一致性（脚本 `@version`、兜底常量、`package.json`、本文件）。
 - 版本号自动化：`npm run bump -- <patch|minor|major|x.y.z> "说明"` 一次写齐脚本 `@version`、`SCRIPT_VERSION` 兜底、`package.json`、`package-lock.json` 与本文件顶部条目；`npm run version:check` 只校验。手改版本号不再必要。
+- 仓库改名为 `bili-flip`：`@namespace` / `@homepageURL` / `@supportURL` / `@updateURL` / `@downloadURL`、README 安装地址、`package.json` 仓库地址全部同步；旧地址靠 GitHub 的仓库重定向继续可用，jsDelivr 旧路径需重新 purge 或直接换新地址。
 
 ## 1.0.0 — 2026-11-19
 

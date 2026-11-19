@@ -129,7 +129,7 @@ npm run version:check                        # 只校验，不一致退出码非
    `git checkout main && git merge --ff-only dev && git push origin main`
    然后 `git tag <版本号>` → `git push origin refs/tags/<版本号>`；`git checkout dev` 回去继续干活。
 6. 想让人立刻装到新版，purge 一下分支缓存：
-   `https://purge.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@main/tampermonkey/bilibili-home-flip-block.user.js`
+   `https://purge.jsdelivr.net/gh/mrchenguozheng/bili-flip@main/tampermonkey/bilibili-home-flip-block.user.js`
 
 仓库的 git remote 用 SSH；本机若 `git ls-remote` 报 `Permission denied (publickey)`，是 Git 自带 ssh 读不到 Windows OpenSSH agent，设仓库级 `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` 即可。
 
