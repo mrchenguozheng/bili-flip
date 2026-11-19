@@ -25,18 +25,20 @@ tampermonkey/
 
 ## 安装
 
-**[一键安装（raw）](https://raw.githubusercontent.com/mrchenguozheng/Bilibili-Home-Flip-Block/main/tampermonkey/bilibili-home-flip-block.user.js)** —— 在装了 Tampermonkey 的 Edge / Chrome 里点开，会直接进入安装页。
+**[一键安装](https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@main/tampermonkey/bilibili-home-flip-block.user.js)** —— 在装了 Tampermonkey 的 Edge / Chrome 里点开，会直接进入安装页。
 
 1. Edge / Chrome 安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 打开上面的 raw 地址，Tampermonkey 会弹出安装页；也可以复制整份内容，在扩展里「添加新脚本」后粘贴保存。
+2. 打开上面的链接，Tampermonkey 会弹出安装页；也可以复制整份内容，在扩展里「添加新脚本」后粘贴保存。
 3. 打开 `https://www.bilibili.com/` 刷新。
+
+**为什么不用 GitHub 的 raw 地址**：raw 返回 `Content-Type: text/plain` + `nosniff`，浏览器只会把脚本当文本显示，篡改猴不会拦截安装；jsDelivr 返回 `application/javascript`，所以能直接进安装页。另外，篡改猴的「允许的站点」需包含 `cdn.jsdelivr.net`，否则同样看不到安装页。
 
 安装后检查两处，这是“脚本装了却毫无反应”的两个常见原因：
 
 - 篡改猴的**站点访问权限**要包含 `www.bilibili.com`（Edge 里若“允许的站点”只有 `cdn.jsdelivr.net`，脚本不会执行）。
 - 首页地址要落在 `/` 或 `/index.html`；其它页面只有视频播放页会多出屏蔽名单入口，翻转不生效。
 
-脚本头部的 `@updateURL` / `@downloadURL` 指向同一份 raw 地址，以后仓库里更新版本，篡改猴会提示升级，不用手动重装。
+脚本头部的 `@updateURL` / `@downloadURL` 指向同一条 jsDelivr 地址，以后仓库里升版本，篡改猴会提示升级，不用手动重装。jsDelivr 对 `@main` 这类分支引用有缓存（最长约 12 小时）；想让新版本立刻可装，可在 [purge 工具](https://www.jsdelivr.com/tools/purge) 里刷一下那条 URL。
 
 ## 使用
 
@@ -178,10 +180,12 @@ It does not download, intercept, or rewrite any request, and does not restructur
 ## Install
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in Edge or Chrome.
-2. Open the [raw file](https://raw.githubusercontent.com/mrchenguozheng/Bilibili-Home-Flip-Block/main/tampermonkey/bilibili-home-flip-block.user.js); Tampermonkey will offer to install it.
+2. Open the [install link](https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@main/tampermonkey/bilibili-home-flip-block.user.js); Tampermonkey will offer to install it.
 3. Reload `https://www.bilibili.com/`.
 
-`@updateURL` and `@downloadURL` point at the same raw URL, so version bumps show up as normal Tampermonkey updates.
+GitHub's raw URL serves `text/plain` with `nosniff`, so Tampermonkey never intercepts it; jsDelivr serves `application/javascript`, which triggers the install page.
+
+`@updateURL` and `@downloadURL` point at the same jsDelivr URL, so version bumps show up as normal Tampermonkey updates. jsDelivr caches branch refs such as `@main` (up to ~12 hours); use the [purge tool](https://www.jsdelivr.com/tools/purge) when a release must be reachable immediately.
 
 Two things to check if nothing happens: the extension's site access must include `www.bilibili.com`, and the page must be the home feed (`/` or `/index.html`).
 
