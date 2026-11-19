@@ -97,9 +97,11 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 ## 识别规则
 
 - **广告卡**：卡内文本节点整串等于「广告」。不是包含“广告”二字，所以标题里带广告的普通视频不会误伤。
-- **推荐位**：`.floor-title` 文字命中白名单，或模块带 `data-mod="partition_recommend.content"`。
+- **推荐位**：`.floor-title` 文字命中白名单，或模块带 `data-mod="partition_recommend.*"`（按前缀匹配）。
 - **直播位**：`.bili-live-card`，或卡内存在指向 `live.bilibili.com` 的链接。
 - **屏蔽名单**：只按 uid 匹配。
+
+类名整批换掉（A/B 灰度、改版）时，还有一层**形状兜底**：只在「页面上明显有视频链接、却一个 `.bili-video-card` 都没有」时启用，沿链接向上爬，取「视频链接不超过 3 个、有封面图、文字不超过 200 字」的最外层当作整张卡。认不出就不动，不做猜测。
 
 ## 数据与隐私
 
@@ -157,7 +159,8 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 ## 已知限制
 
 - 只在 Edge + Tampermonkey 上人工验证过菜单与下载；其余行为由 jsdom 断言覆盖。
-- 首页改版会让选择器失效：三类卡片各有兜底路径，连续三次扫描抛错会断开观察、摘掉全部标记，把页面还给 B 站。
+- 首页改版会让选择器失效：三类卡片各有兜底路径（含上文形状兜底），连续三次扫描抛错会断开观察、摘掉全部标记，把页面还给 B 站。
+- 形状兜底只保证「认出卡片、整卡处理」，认不出的一律不动；类名改版后菜单里会多出一行 `⚠️` 提示，正常页面没有这一行。带 `?bbm=debug` 时控制台打一行扫描诊断（只有计数，不打名单内容）。
 - 加密包的强度取决于口令。12 位且符合规则的人造口令（“词+年+符号”这类结构）面对定向攻击仍可能被模式字典在数小时内试完；真随机的 12 位则是物理上做不完的量级。
 - 文件大小与条目数量大致成正比，加密包不隐藏“名单有几条”。
 - 名单条数影响的是存储读写与内存，不影响扫描频率；一万条量级仍属轻负载，十万条开始明显变重。
@@ -170,7 +173,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 npm install
 npm run lint       # 检查写法
 npm run lint:fix   # 顺手修可自动修的
-npm test           # jsdom 回归，当前 166 条断言
+npm test           # jsdom 回归，当前 180 条断言
 ```
 
 规则只有几条硬约束：`@eslint/js` recommended 全套、`no-multi-spaces`（对齐的行尾注释只能有一个空格）、`no-empty` 放行空 `catch`、`no-var`、`no-unused-vars` 不追究未用参数。篡改猴注入的全局（`GM_getValue` 等）在 `eslint.config.mjs` 里按 `@grant` 列表声明，浏览器全局取 `globals.browser`。
@@ -211,6 +214,7 @@ A Tampermonkey userscript that changes only how the Bilibili home feed *looks*: 
 - Mirrors recommendation and live cards horizontally.
 - Mirrors any card posted by a UP on your local blocklist, with an optional click lock.
 - Eight independent toggles, one menu row each. The leading icon is the state: `↕️` / `↔️` for an active flip, `✅` for an active click lock, `⬜` for off.
+- Falls back to card shape when Bilibili renames its CSS classes (A/B cohorts): a card is the outermost ancestor of a video link that still has at most three video links, a cover image and under 200 characters of text. If nothing matches, nothing is touched.
 
 ## What it does not do
 

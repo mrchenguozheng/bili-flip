@@ -30,7 +30,7 @@ tampermonkey/
 
 1. **隐私**：明文导出永远不含 `bvid` / `title`。它们是“你看过什么”，不是“你屏蔽了谁”。带 BV 与标题的出口只有加密包一个。
 2. **加密参数不许调低**：AES-GCM-256、PBKDF2-SHA256 **200000** 轮、salt 16 字节 / iv 12 字节每次随机；口令 **≥12 位**且同时含大写、小写、数字、符号，不同字符 ≥10 种，不含弱词。口令**只输一次**，写完当场用同一口令解一遍，解得开才落盘。
-3. **不打印用户可见信息**：`console` 只允许内部异常（周期任务抛错、扫描失败第 N 次、连续失败停机）。名单不往控制台打印。
+3. **不打印用户可见信息**：`console` 只允许内部异常（周期任务抛错、扫描失败第 N 次、连续失败停机）与带 `?bbm=debug` 时的扫描诊断（只有计数，不含 uid / 标题 / 名单）。名单不往控制台打印。
 4. **零自绘 UI**：只有 `GM_registerMenuCommand` 与原生 `prompt` / `confirm`。不要加设置面板、悬浮球、气泡。
 5. **不兼容旧格式**：没有旧键迁移、没有旧导出格式兜底、没有“兼容上个版本”的分支。改格式就同步改校验白名单并升版本号。
 6. **只改显示**：给卡片加 `data-bbm` / `data-bbm-lock` 属性 + 一段 CSS。不下载、不拦截、不改写请求、不重构 B 站 DOM。
@@ -51,15 +51,16 @@ tampermonkey/
 | 头部元数据 | `@name` / `@namespace` / `@version` / `@updateURL` / `@downloadURL` / `@icon` | `@updateURL` 固定用 jsDelivr `@main`；写成 `@<tag>` 等于关掉自动更新 |
 | 设置层 | `DEFAULTS`、`LABELS`、`load` / `save`、`KEY='bbm:settings'` | 新增开关要同时补 `DEFAULTS` 与 `LABELS`（`name`/`effect`/`off`，翻转类加 `icon`） |
 | 标记与选择器 | `MARK='data-bbm'`、`LOCK='data-bbm-lock'`、`CARD`、`CARD_WRAP`、`LIVE_CARD`、`FLOOR_TITLE` | 选择器随 B 站改版失效；三类卡片各留兜底路径 |
+| 形状兜底 | `VIDEO_LINK`、`SHAPE_DEPTH`、`SHAPE_MAX_LINKS`、`SHAPE_MAX_TEXT`、`shapeCardFrom()`、`shapeAdCardFrom()`、`cardClassMissing()` | 只在「有视频链接但零 `CARD`」时启用，平时零成本；判定条件是“链接 ≤3、有 img、文字 ≤200”，放宽会出现整排卡片被当成一张 |
 | 调度器 | `tasks` / `every()` / `arm()` / `fire()` / `bind()` | 全页只有一个 `setTimeout`；`document.hidden` 暂停、切回补跑；任务抛错不影响其它任务 |
-| 扫描 | `paint()`、`collectAdCards()`、`collectFlipCards()`、`collectBlockCards()`、`scanGuarded()`、`shutDown()` | 用 Set 差集做增量；连续三次抛错会摘掉全部标记把页面还给 B 站 |
+| 扫描 | `paint()`、`collectAdCards()`、`collectFlipCards()`、`collectBlockCards()`、`scanGuarded()`、`shutDown()`、`diagState()` | 用 Set 差集做增量；连续三次抛错会摘掉全部标记把页面还给 B 站；`shapeHits` 每轮重置，`diagKey` 只分四档 |
 | 观察者 | `observer` + `relevant()` + `schedule()` | 只认 `CARD` / `CARD_WRAP` 子树内的 `childList` 与 `class` / `href` 变化，140ms 合批 |
 | 名单存储 | `BLOCK_KEY='bbm:blocked'`、`UIDS_KEY='bbm:blocked:uids'`、`storeGet/storeSet`、`refreshBlock()`、`readUids()`、`saveBlock()` | 索引是缓存：写整份后必须回写索引；索引缺失/损坏退回读整份 |
 | 分档轮询 | `blockPollMs()`、`blockPoll()` | ≤1k 3s、≤5k 10s、≤20k 30s、其余 60s；只读索引，集合真变了才重扫并重画菜单 |
 | UP 识别 | `bvidFromUrl()`、`stateVideo()`、`domVideo()`、`apiVideo()`、`resolveVideo()` | 三层：地址栏 BV → `unsafeWindow.__INITIAL_STATE__` → 接口；接口失败 30s 内不重试同一条 |
 | 标签 | `DEFAULT_TAGS`、`TAG_SHOW`、`normTags()`、`mapTags()`、`buildTagSchema()` | 表外标签一律折叠成 `其他`；改标签含义才动 `TAG_SCHEMA_V` |
 | 导出/导入 | `exportBlock()`、`exportEncrypted()`、`importBlock()`、`applyImport()`、`shapeError()` | 白名单 `PAYLOAD_KEYS` / `ENC_KEYS` / `KDF_KEYS` / `ENTRY_KEYS` 与写入端必须同步 |
-| 菜单 | `buildMenu()`、`switchLabel()`、`toggle()`、`toggleTagOnCurrent()`、`MENU_IDS` | 每次重建先按 id 注销旧项；`GM_unregisterMenuCommand` 收 id，不收文字 |
+| 菜单 | `buildMenu()`、`switchLabel()`、`toggle()`、`toggleTagOnCurrent()`、`MENU_IDS` | 每次重建先按 id 注销旧项；`GM_unregisterMenuCommand` 收 id，不收文字；E 段诊断行只在 `shapeEver` 或“零卡片但有链接”时出现 |
 | 启动 | `start()`、`waitRoot()` | 样式挂在 `document.head || document.documentElement`，`document-start` 时 head 可能还不存在 |
 
 ## 4. 常见坑
@@ -69,6 +70,8 @@ tampermonkey/
 - **整卡翻转**：推荐位/列表位要取最外层卡片节点（`outerFloorCard`），只标记内部 `<a>` 会出现“标题不翻但还能点”。
 - **索引与整份的先后**：`saveBlock()` 先写整份再写索引；只改一处会让下一次轮询误判或重建菜单。
 - **菜单重建的时机**：`buildMenu()` 开头会 `refreshBlock()`，所以手动改 `bbm:blocked` 时，打开一次菜单即对齐——但轮询不会替你发现整份变了。
+- **别在 `scan()` 里直接重画菜单**：`buildMenu()` 会读整份名单，直接调用会让“轮询阶段整份零读”这条契约失效。扫描只置 `menuDirty`，由 `heartbeat()` 消费；`diagKey` 开机前先按 `diagState()` 记基线，避免为“状态没变”白读一次。
+- **形状兜底别外扩**：`SHAPE_MAX_LINKS` / `SHAPE_MAX_TEXT` 是防止把整块信息流当成一张卡的唯一闸门。放开它们会让“整排一起翻”，这比不兜底更糟。
 - **口令框是明文 `prompt`**：密码管理器认不到、也填不进来，这是已知代价（用户明确接受）。不要偷偷换成页面内 `input[type=password]`——那等于自绘 UI。
 - **导入严格校验**：多一个字段整份拒绝并点名字段。这条是为了挡住“有人把密码顺手写进同一份 JSON”。放宽它等于拆掉这个防护。
 - **改导出结构**：`exportBlock()` 里有 `v: 3` 与 `tags` 数组；改字段名要同时改 `shapeError` 的白名单、README 的导出表和 CHANGELOG。
@@ -84,11 +87,11 @@ npm run lint
 npm test
 ```
 
-- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **166 PASS / 0 FAIL**。
-- 回归就是仓库里的 `tools/block.test.cjs`：jsdom 把整份脚本跑起来，喂假存储 / 假菜单 / 假 prompt，覆盖开关、翻转换算、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密。断言以 `PASS` / `FAIL` 开头，失败时退出码非 0。
+- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **180 PASS / 0 FAIL**。
+- 回归就是仓库里的 `tools/block.test.cjs`：jsdom 把整份脚本跑起来，喂假存储 / 假菜单 / 假 prompt，覆盖开关、翻转换算、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密、A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、`?bbm=debug` 静默性。断言以 `PASS` / `FAIL` 开头，失败时退出码非 0。
 - 加断言就照现有风格在后面续一组：`log(条件, '断言名', '补充值')`，别改已有断言名，方便对比历史基线。
 - ESLint 只约束 `tampermonkey/*.user.js`；`tools/` 是 Node 脚本，不在 lint 范围，写它时按 Node 习惯来（`require`、`fs`、`__dirname`）。
-- 改逻辑必须让 `npm test` 仍是 166 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
+- 改逻辑必须让 `npm test` 仍是 180 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
 - 验证“装了却不生效”的经典三连：篡改猴「允许的站点」是否含 `www.bilibili.com`；地址是否是首页 `/` 或 `/index.html`；文件是不是从 jsDelivr 装的（raw 是 `text/plain`，不会触发安装）。
 
 ## 6. 发布流程

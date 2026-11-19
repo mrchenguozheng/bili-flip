@@ -51,7 +51,7 @@ function boot({ url, html, store }) {
     table: (rows) => logs.push('TABLE ' + JSON.stringify(rows)),
     warn: () => {},
     error: () => {},
-    info: () => {},
+    info: (...a) => logs.push(a.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(' ')),
   };
   win.confirm = () => (confirmQueue.length ? confirmQueue.shift() : false);
   win.prompt = (msg) => {
@@ -827,6 +827,82 @@ const CARD = (uid, name) =>
     await sleep(3300);
     log(card.getAttribute('data-bbm') === 'block', '索引损坏时按整份名单重新判定');
     log(store['bbm:blocked:uids'] === 'v1|1|12345', '索引损坏后自动修复', store['bbm:blocked:uids']);
+  }
+
+  /* ---------------- 13. A/B 灰度：类名整批换掉，靠形状兜底 ---------------- */
+  {
+    const B_CARD = (uid, name) =>
+      '<div class="v-card-x">' +
+      '<a class="cover-x" href="//www.bilibili.com/video/BV1xx411c7mD"><img src="c.jpg"><span>12:34</span></a>' +
+      '<div class="tit-x"><a href="//www.bilibili.com/video/BV1xx411c7mD">标题</a></div>' +
+      '<a class="owner-x" href="//space.bilibili.com/' + uid + '">' + name + '</a>' +
+      '</div>';
+
+    const html =
+      '<body>' +
+      '<div class="feed-x">' +
+      B_CARD('12345', '张三') +
+      B_CARD('99999', '路人') +
+      B_CARD('88888', '补位') +
+      '</div>' +
+      // 广告卡：没有时长条、链接指向站外，只有「广告」两个字
+      '<div class="ad-x"><a href="//ad.example"><img src="a.jpg"><span>广告</span></a></div>' +
+      // 普通卡：标题里含「广告」但不是独立两字
+      '<div class="v-card-y"><a href="//www.bilibili.com/video/BV1xx411c7mE"><img src="n.jpg"><span>广告位</span></a></div>' +
+      // 直播卡：没有 .bili-live-card，只剩链接
+      '<div class="live-x"><a href="//live.bilibili.com/123"><img src="l.jpg"><span>直播中</span></a></div>' +
+      // 推荐位：没有了 .floor-title / .floor-single-card，只剩模块标记
+      '<div class="rec-x" data-mod="partition_recommend.content"><a href="//www.bilibili.com/video/BV1xx411c7mF"><img src="r.jpg"></a><span class="ft-x">番剧</span></div>' +
+      '</body>';
+
+    const store = { 'bbm:blocked': [{ uid: '12345', name: '张三', at: 1 }] };
+    const env = boot({ url: 'https://www.bilibili.com/', html, store });
+    await sleep(200);
+    const doc = env.win.document;
+    const feed = doc.querySelector('.feed-x');
+    const b1 = feed.querySelector('.v-card-x');
+    log(env.menus.length > 0, '类名失效：菜单仍然注册成功');
+
+    log(b1.getAttribute('data-bbm') === 'block', '类名失效：名单内卡片按形状认出并标记');
+    log(feed.querySelectorAll('.v-card-x')[1].getAttribute('data-bbm') === null, '类名失效：名单外卡片不动');
+    log(feed.getAttribute('data-bbm') === null, '类名失效：整块信息流容器没有被误标');
+
+    const ad = doc.querySelector('.ad-x');
+    log(ad.getAttribute('data-bbm') === 'ad', '类名失效：广告卡按「广告」两字 + 形状认出');
+    log(doc.querySelector('.v-card-y').getAttribute('data-bbm') === null, '类名失效：标题含「广告位」的普通卡不动');
+
+    log(doc.querySelector('.live-x').getAttribute('data-bbm') === 'flip', '类名失效：直播卡按链接形状兜底');
+    log(doc.querySelector('.rec-x').getAttribute('data-bbm') === 'flip', '类名失效：推荐位按 data-mod 前缀兜底');
+
+    // 依赖 3s 心跳：诊断结论变化后重建菜单，多出一行只在失效时出现的提示
+    await sleep(3400);
+    const warn = env.menus.filter((m) => /^⚠️ /.test(m.label));
+    log(warn.length === 1, '类名失效：菜单出现诊断提示行', warn.map((m) => m.label).join(' | '));
+    log(warn.some((m) => /形状兜底/.test(m.label)), '类名失效：提示的是形状兜底');
+
+    // 存储里换回老类名：下一轮扫描恢复类名路径，提示行随之消失
+    const card = doc.createElement('div');
+    card.className = 'bili-video-card';
+    card.innerHTML =
+      '<a class="bili-video-card__info--owner" href="//space.bilibili.com/12345">张三</a>';
+    doc.body.appendChild(card);
+    feed.className = 'feed-x';
+    await sleep(3400);
+    log(card.getAttribute('data-bbm') === 'block', '类名恢复：新插入的老类名卡片立刻命中');
+  }
+
+  /* ---------------- 14. ?bbm=debug 才打诊断，平时一行不打 ---------------- */
+  {
+    const store = { 'bbm:blocked': [] };
+    const html = '<body>' + CARD('12345', '张三') + CARD('99999', '路人') + '</body>';
+    const quiet = boot({ url: 'https://www.bilibili.com/', html, store });
+    await sleep(200);
+    log(!quiet.allLogs().includes('[bbm]'), '默认不打任何诊断');
+
+    const loud = boot({ url: 'https://www.bilibili.com/?bbm=debug', html, store });
+    await sleep(200);
+    log(loud.allLogs().includes('[bbm] 扫描诊断'), '带 bbm=debug 才打扫描诊断');
+    log(!loud.allLogs().includes('12345'), '诊断不回显 uid');
   }
 
   // jsdom 的计时器会让进程常驻，断言跑完直接收工

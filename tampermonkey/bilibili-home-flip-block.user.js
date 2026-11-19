@@ -148,6 +148,8 @@
 
   /* ?bbm=off：本页临时全部关闭（不改存储，刷新回来就恢复） */
   const OFF = /(?:^|[?&#])bbm=off(?:[&#]|$)/.test(location.search + location.hash);
+  /* ?bbm=debug：只在带参数时往控制台打扫描诊断（不打名单内容），排查改版用 */
+  const DEBUG = /(?:^|[?&#])bbm=debug(?:[&#]|$)/.test(location.search + location.hash);
   const allOff = () => {
     const o = {};
     Object.keys(DEFAULTS).forEach((k) => { o[k] = false; });
@@ -236,6 +238,54 @@
   }
 
   /* ---------------------------------------------------------
+   * 形状兜底（A/B 灰度：类名可能整批换掉）
+   *
+   * 只在「页面上明显有视频链接、但一个 .bili-video-card 都没有」时启用，
+   * 平时一次都不跑，不给每 3 秒的扫描加成本。
+   * 卡片判定只认形态：沿链接向上爬，取还能算「单张卡」的最外层——
+   *   视频链接 ≤ 3 个（封面 + 标题 + 播放按钮这种）、有封面 img、
+   *   可见文字不超过 SHAPE_MAX_TEXT（再往上就是信息流容器，文字会爆长）。
+   * 认不出就返回空：宁可不动，也不猜着翻别人一整排。
+   * ------------------------------------------------------- */
+  const VIDEO_LINK = 'a[href*="/video/"]';
+  const SHAPE_DEPTH = 6; // 从链接向上最多爬几层
+  const SHAPE_MAX_LINKS = 3; // 一层里视频链接不超过这个数，才算单张卡
+  const SHAPE_MAX_TEXT = 200; // 单张卡可见文字长度上限，挡住整块信息流
+
+  function shapeCardFrom(seed) {
+    let el = seed;
+    let best = null;
+    for (let i = 0; i < SHAPE_DEPTH; i++) {
+      el = el && el.parentElement;
+      if (!el) break;
+      if (el.querySelectorAll(VIDEO_LINK).length > SHAPE_MAX_LINKS) break;
+      if (!el.querySelector('img')) continue;
+      if ((el.textContent || '').trim().length > SHAPE_MAX_TEXT) break;
+      best = el;
+    }
+    return best;
+  }
+
+  /** 广告卡没有时长条、链接也可能指向站外：只要求有封面图、有链接、文字短 */
+  function shapeAdCardFrom(node) {
+    let el = node && node.parentElement;
+    for (let i = 0; i < SHAPE_DEPTH && el; i++) {
+      if (
+        el.querySelector('img') &&
+        el.querySelector('a') &&
+        (el.textContent || '').trim().length <= SHAPE_MAX_TEXT
+      ) return el;
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  /** 类名路径整体失效：有卡片形状，但没有一张带老类名 */
+  function cardClassMissing() {
+    return !document.querySelector(CARD) && document.querySelectorAll(VIDEO_LINK).length >= 3;
+  }
+
+  /* ---------------------------------------------------------
    * 调度器
    * 全页只一个 setTimeout；隐藏时暂停；切回可见只补一次；
    * 任务抛错只影响它自己。
@@ -312,6 +362,12 @@
   let hitsFlip = new Set();
   let hitsBlock = new Set();
 
+  /* ---- 诊断（只给维护者看：菜单里一行状态，控制台只认调试参数） ---- */
+  let shapeHits = 0; // 本轮靠形状兜底认出的卡片数
+  let shapeEver = false; // 曾经启用过兜底，菜单里的提示行据此出现
+  let diagKey = ''; // 上一轮诊断结论，变了才重画菜单
+  let menuDirty = false; // 诊断结论变了，等下一次心跳重画菜单
+
   /** opts.flip(el) / opts.lock(el)：逐张卡决定这一轮要翻、要锁，
       不传就按"这一类两项都开"处理（兼容旧调用） */
   function paint(next, kind, opts) {
@@ -361,14 +417,18 @@
     if (ENABLE.live || ENABLE.liveLock) {
       document.querySelectorAll(LIVE_CARD).forEach((el) => { all.add(el); liveSet.add(el); });
 
-      // 直播卡片（链接兜底）
+      // 直播卡片（链接兜底）：先按老类名容器取，取不到再按形状爬
+      const missing = cardClassMissing();
       document.querySelectorAll('a[href*="live.bilibili.com"]').forEach((a) => {
-        const card = a.closest(CARD_WRAP);
-        if (card) { all.add(card); liveSet.add(card); }
+        const card = a.closest(CARD_WRAP) || shapeCardFrom(a);
+        if (!card) return;
+        all.add(card);
+        liveSet.add(card);
+        if (missing) shapeHits += 1;
       });
     }
 
-    // 推荐位卡片：① 标签文字白名单 ② 结构兜底（模块标记 data-mod）
+    // 推荐位卡片：① 标签文字白名单 ② 结构兜底（模块标记 data-mod，按前缀匹配）
     // 两条都取「整张卡」那一层，保证封面与标题一起翻转、一起禁点
     if (ENABLE.floor || ENABLE.floorLock) {
       document.querySelectorAll(FLOOR_TITLE).forEach((t) => {
@@ -378,8 +438,8 @@
         if (card) { all.add(card); floorSet.add(card); }
       });
 
-      document.querySelectorAll('[data-mod="partition_recommend.content"]').forEach((el) => {
-        const card = outerFloorCard(el);
+      document.querySelectorAll('[data-mod^="partition_recommend"]').forEach((el) => {
+        const card = outerFloorCard(el) || shapeCardFrom(el);
         if (card) { all.add(card); floorSet.add(card); }
       });
     }
@@ -393,6 +453,19 @@
     document.querySelectorAll(CARD).forEach((card) => {
       if (hasAdWord(card)) next.add(card);
     });
+    if (cardClassMissing()) {
+      // 类名失效时的广告识别：仍然只认「整串等于广告」的文本节点，再按形状找卡片
+      const root = document.body || document.documentElement;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        if ((node.nodeValue || '').trim() !== '广告') continue;
+        const p = node.parentElement;
+        if (!p || (p.textContent || '').trim() !== '广告') continue;
+        const card = shapeAdCardFrom(p);
+        if (card) { next.add(card); shapeHits += 1; }
+      }
+    }
     return next;
   }
 
@@ -666,6 +739,15 @@
       const uid = cardUid(card);
       if (uid && BLOCK_UIDS.has(uid)) next.add(card);
     });
+    if (cardClassMissing()) {
+      // 类名失效：从视频链接爬回卡片，再按 owner 链接取 uid，判定标准不变
+      document.querySelectorAll(VIDEO_LINK).forEach((a) => {
+        const card = shapeCardFrom(a);
+        if (!card) return;
+        const uid = cardUid(card);
+        if (uid && BLOCK_UIDS.has(uid)) { next.add(card); shapeHits += 1; }
+      });
+    }
     return next;
   }
 
@@ -1218,6 +1300,7 @@
   let stopped = false;
 
   function scan() {
+    shapeHits = 0;
     paint(collectAdCards(), 'ad', {
       flip: () => !!ENABLE.ad,
       lock: () => !!ENABLE.adLock,
@@ -1232,6 +1315,29 @@
       flip: () => !!ENABLE.block,
       lock: () => !!ENABLE.blockLock,
     });
+
+    /* 诊断：类名还认不认得出卡片、兜底有没有上阵。
+       结论只在变化时重画菜单，平时一行都不画。 */
+    if (shapeHits > 0) shapeEver = true;
+    const key = diagState();
+    if (key !== diagKey) { diagKey = key; menuDirty = true; }
+    if (DEBUG) {
+      console.info('[bbm] 扫描诊断', {
+        类名卡片: document.querySelectorAll(CARD).length,
+        视频链接: document.querySelectorAll(VIDEO_LINK).length,
+        形状兜底认出: shapeHits,
+        广告命中: hitsAd.size,
+        翻转命中: hitsFlip.size,
+        屏蔽命中: hitsBlock.size,
+      });
+    }
+  }
+
+  /** 诊断结论只分四档，避免“链接数一变就重画菜单”（重画会顺带读整份名单） */
+  function diagState() {
+    if (shapeEver) return 'shape';
+    if (classCardCount()) return 'named';
+    return document.querySelectorAll(VIDEO_LINK).length >= 3 ? 'unnamed' : 'empty';
   }
 
   function scanGuarded() {
@@ -1362,6 +1468,20 @@
     reg('导出加密包（' + n + ' 条，口令保护，含标签与 BV/标题）', () => exportEncrypted());
     reg('导入首页屏蔽名单（合并）', () => importBlock());
     reg('清空首页屏蔽名单', () => clearBlock());
+
+    /* E. 诊断行：只在“类名认不出卡片、已经按形状兜底”或“有卡片但一张都没认出”
+       时出现；正常页面完全没有这一行。点它没有反应，纯提示。 */
+    if (isHomeFeed()) {
+      if (shapeEver) {
+        reg('⚠️ 卡片类名疑似改版，已按形状兜底（只作提示）', () => {});
+      } else if (!classCardCount() && document.querySelectorAll(VIDEO_LINK).length >= 3) {
+        reg('⚠️ 首页有卡片但一个都没认出（可能改版）', () => {});
+      }
+    }
+  }
+
+  function classCardCount() {
+    return document.querySelectorAll(CARD).length;
   }
 
   function applyNow() {
@@ -1392,6 +1512,7 @@
     if (moved || stale || (!VIDEO && cur)) resolveVideo(true);
     if (!isVideoPage() && VIDEO) { VIDEO = null; buildMenu(); }
     scanGuarded();
+    if (menuDirty) { menuDirty = false; buildMenu(); }
   }
 
   /* ---------------------------------------------------------
@@ -1446,6 +1567,7 @@
     refreshBlock();
     resolveVideo(false);
     buildMenu();
+    diagKey = diagState(); // 首轮扫描前就记下基线，避免开机后为“状态没变”多读一次整份
     scanGuarded(); // 首次同步扫，不等防抖，避免首屏广告卡多闪一拍
   }
 
