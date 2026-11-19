@@ -42,7 +42,22 @@ tampermonkey/
 - 篡改猴的**站点访问权限**要包含 `www.bilibili.com`（Edge 里若“允许的站点”只有 `cdn.jsdelivr.net`，脚本不会执行）。
 - 首页地址要落在 `/` 或 `/index.html`；其它页面只有视频播放页会多出屏蔽名单入口，翻转不生效。
 
-脚本头部的 `@updateURL` / `@downloadURL` 指向同一条 jsDelivr 地址，以后仓库里升版本，篡改猴会提示升级，不用手动重装。jsDelivr 对 `@main` 这类分支引用有缓存（最长约 12 小时）；想让新版本立刻可装，可在 [purge 工具](https://www.jsdelivr.com/tools/purge) 里刷一下那条 URL。
+脚本头部的 `@updateURL` / `@downloadURL` 指向同一条 jsDelivr `@main` 地址，以后仓库里升版本，篡改猴会提示升级，不用手动重装。jsDelivr 对 `@main` 这类分支引用有缓存（最长约 12 小时）；想让新版本立刻可装，可在 [purge 工具](https://www.jsdelivr.com/tools/purge) 里刷一下那条 URL。
+
+### 两条地址，各管一件事
+
+| 用途 | 地址 | 特性 |
+|---|---|---|
+| 日常安装、自动更新 | `...@main/tampermonkey/bilibili-home-flip-block.user.js` | 跟着仓库最新走；分支引用有缓存，改动后可能要 purge 才生效 |
+| 锁定某个版本 | `...@1.0.0/tampermonkey/bilibili-home-flip-block.user.js` | 按 git tag 取，内容永不变化、没有缓存问题 |
+
+```
+https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tampermonkey/bilibili-home-flip-block.user.js
+```
+
+锁版本地址适合发给别人复现同一份行为、或者在排查“是不是新版引入的问题”时退回旧版。脚本头部仍用 `@main`：`@updateURL` 若也写成固定版本，篡改猴就永远只会看到那一个版本，等于关掉了自动更新。
+
+发新版时：改 `@version` → 提交 → `git tag <版本号>` → 推 tag，那条 `@<版本号>` 地址就自动可用（仓库目前有 `1.0.0` 这个 tag）。
 
 ## 使用
 
@@ -204,6 +219,8 @@ It does not download, intercept, or rewrite any request, and does not restructur
 GitHub's raw URL serves `text/plain` with `nosniff`, so Tampermonkey never intercepts it; jsDelivr serves `application/javascript`, which triggers the install page.
 
 `@updateURL` and `@downloadURL` point at the same jsDelivr URL, so version bumps show up as normal Tampermonkey updates. jsDelivr caches branch refs such as `@main` (up to ~12 hours); use the [purge tool](https://www.jsdelivr.com/tools/purge) when a release must be reachable immediately.
+
+A tag-pinned URL is available for reproducible installs: `https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tampermonkey/bilibili-home-flip-block.user.js`. Tags are immutable and uncached, but do not use one in `@updateURL` — it would freeze updates.
 
 Two things to check if nothing happens: the extension's site access must include `www.bilibili.com`, and the page must be the home feed (`/` or `/index.html`).
 
