@@ -20,6 +20,15 @@ tampermonkey/
   CHANGELOG.md                       版本记录（js 里不写历史）
 ```
 
+### 分支规则
+
+| 分支 | 用途 | 规矩 |
+|---|---|---|
+| `main` | 只放**已发布版本** | 不直接往上提交实验；正式发版时才把 `dev` 快进合并过来并打 tag，其余时间保持不动 |
+| `dev` | 日常开发与实验 | 一切改动先来这里；验收、跑测试都在这里完成 |
+
+`@updateURL` 指向 jsDelivr 的 `@main`，所以“main 稳定”等于“用户只在发版时拿到更新”。实验改动必须走 `dev`，否则用户会提前拿到未经验证的版本。
+
 - 单文件、IIFE、`document-start`、无构建步骤；没有 `src/`，也不要引入打包器。
 - 依赖只有篡改猴的 `GM_*` 与浏览器原生 API（`crypto.subtle`、`MutationObserver`、`prompt`）。
 - 用户安装走 jsDelivr（`@main` 自动更新、`@<tag>` 锁版本）；GitHub raw 是 `text/plain`，**不能**当安装地址。
@@ -99,9 +108,12 @@ npm test
 
 1. 改 `@version`（同时改 `scriptVersion` 兜底值）。
 2. 更新 `CHANGELOG.md` 顶部条目的日期与内容；README 里若涉及行为变化同步改。
-3. `node --check` + `npm run lint` + 回归全过。
-4. `git commit` → `git push origin main` → `git tag <版本号>` → `git push origin refs/tags/<版本号>`。
-5. 想让人立刻装到新版，purge 一下分支缓存：
+3. `node --check` + `npm run lint` + 回归全过（在 `dev` 上）。
+4. `git push origin dev`，确认远端 `dev` 就是待发布内容。
+5. 发布只做一次快进，不要在 `main` 上叠提交：
+   `git checkout main && git merge --ff-only dev && git push origin main`
+   然后 `git tag <版本号>` → `git push origin refs/tags/<版本号>`；`git checkout dev` 回去继续干活。
+6. 想让人立刻装到新版，purge 一下分支缓存：
    `https://purge.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@main/tampermonkey/bilibili-home-flip-block.user.js`
 
 仓库的 git remote 用 SSH；本机若 `git ls-remote` 报 `Permission denied (publickey)`，是 Git 自带 ssh 读不到 Windows OpenSSH agent，设仓库级 `core.sshCommand = C:/Windows/System32/OpenSSH/ssh.exe` 即可。

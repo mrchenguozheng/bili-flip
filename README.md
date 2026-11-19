@@ -51,7 +51,7 @@ tampermonkey/
 
 | 用途 | 地址 | 特性 |
 |---|---|---|
-| 日常安装、自动更新 | `...@main/tampermonkey/bilibili-home-flip-block.user.js` | 跟着仓库最新走；分支引用有缓存，改动后可能要 purge 才生效 |
+| 日常安装、自动更新 | `...@main/tampermonkey/bilibili-home-flip-block.user.js` | 只跟随**已发布版本**（`main` 锁定为最新 release，实验改动不进 `main`）；分支引用有缓存，改动后可能要 purge 才生效 |
 | 锁定某个版本 | `...@1.0.0/tampermonkey/bilibili-home-flip-block.user.js` | 按 git tag 取，内容永不变化、没有缓存问题 |
 
 ```
@@ -59,6 +59,8 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 ```
 
 锁版本地址适合发给别人复现同一份行为、或者在排查“是不是新版引入的问题”时退回旧版。脚本头部仍用 `@main`：`@updateURL` 若也写成固定版本，篡改猴就永远只会看到那一个版本，等于关掉了自动更新。
+
+分支：`dev` 是日常开发与实验所在，`main` 只在发版时快进合并一次并打 tag。想提前试实验版，把地址里的 `@main` 换成 `@dev` 即可（同样会有分支缓存）。
 
 发新版时：改 `@version` → 提交 → `git tag <版本号>` → 推 tag，那条 `@<版本号>` 地址就自动可用（仓库目前有 `1.0.0` 这个 tag）。
 
