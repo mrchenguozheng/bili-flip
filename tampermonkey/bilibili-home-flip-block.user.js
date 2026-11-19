@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         B站首页卡片翻转与UP屏蔽
 // @namespace    https://github.com/mrchenguozheng/bili-flip
-// @version      1.1.0
+// @version      1.2.0
 // @license      MIT
 // @homepageURL  https://github.com/mrchenguozheng/bili-flip
 // @supportURL   https://github.com/mrchenguozheng/bili-flip/issues
@@ -45,6 +45,9 @@
  * 菜单
  *   TM 菜单扁平、无子菜单也无分隔符，所以只分行不分组。
  *   每行只写当前生效的那种效果，行首 ✅ / ⬜ 表示开 / 关；
+ *   行尾恒带「（本页 N 张）」，说的是这一档在这张页面此刻作用了几张卡——
+ *   开着但 N=0 就是"开了、本页没这种卡"，不用猜图标。
+ *   计数只数属性不数集合：开关一关属性摘掉，数字自己归零，不会骗人。
  *   两个框都是全角 emoji，左边缘对齐，别换成 ASCII 的 _ 或空格。
  *
  * 屏蔽名单
@@ -384,7 +387,9 @@
   let shapeHits = 0; // 本轮靠形状兜底认出的卡片数
   let shapeEver = false; // 曾经启用过兜底，菜单里的提示行据此出现
   let diagKey = ''; // 上一轮诊断结论，变了才重画菜单
-  let menuDirty = false; // 诊断结论变了，等下一次心跳重画菜单
+  let menuDirty = false; // 诊断结论或计数变了，等下一次心跳重画菜单
+  let flipSets = { live: new Set(), floor: new Set() }; // 上一轮收集到的直播 / 推荐位卡片，给菜单计数用
+  let statKey = ''; // 上一轮八档计数拼成的串，变了才重画菜单
 
   /** opts.flip(el) / opts.lock(el)：逐张卡决定这一轮要翻、要锁，
       不传就按"这一类两项都开"处理（兼容旧调用） */
@@ -546,7 +551,7 @@
   const TAGS = DEFAULT_TAGS.slice(); // 固定表，运行期不再增删
   /** 版本号取管理器读到的 @version，缺失时回落本文件的常量 */
   const SCRIPT_VERSION =
-    (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version) || '1.1.0';
+    (typeof GM_info !== 'undefined' && GM_info && GM_info.script && GM_info.script.version) || '1.2.0';
   const TAG_SCHEMA_V = 1; // 标签描述结构的版本，改字段含义时才 +1
 
   /** 导出用的标签描述：短名 → 显示写法 + 它收编了哪些近义说法。
@@ -1326,6 +1331,7 @@
       lock: () => !!ENABLE.adLock,
     });
     const f = collectFlipCards();
+    flipSets = { live: f.live, floor: f.floor };
     paint(f.all, 'flip', {
       // 一张卡可能同时是直播位和推荐位：任一类要求翻就翻，任一类要求锁就锁
       flip: (el) => (f.live.has(el) && ENABLE.live) || (f.floor.has(el) && ENABLE.floor),
@@ -1341,16 +1347,42 @@
     if (shapeHits > 0) shapeEver = true;
     const key = diagState();
     if (key !== diagKey) { diagKey = key; menuDirty = true; }
+    // 八档各自的命中数变了也要重画（菜单行里写着「本页 N 张」，不重画就一直是开机那一刻的数）
+    const stats = statKeyNow();
+    if (stats !== statKey) { statKey = stats; menuDirty = true; }
     if (DEBUG) {
       console.info('[bbm] 扫描诊断', {
         类名卡片: document.querySelectorAll(CARD).length,
         视频链接: document.querySelectorAll(VIDEO_LINK).length,
         形状兜底认出: shapeHits,
-        广告命中: hitsAd.size,
-        翻转命中: hitsFlip.size,
-        屏蔽命中: hitsBlock.size,
+        广告命中: countOf('ad'),
+        推荐位命中: countOf('floor'),
+        直播位命中: countOf('live'),
+        屏蔽UP命中: countOf('block'),
       });
     }
+  }
+
+  /** 某个开关此刻实际作用在几张卡上：数属性而不是数集合，
+      关掉的那一刻属性已经摘掉，计数自然归零 */
+  function countOf(k) {
+    const marked = (el, kind) => el.getAttribute(MARK) === kind;
+    const locked = (el) => el.hasAttribute(LOCK);
+    const pick = (set, test) => { let n = 0; set.forEach((el) => { if (test(el)) n += 1; }); return n; };
+    if (k === 'ad') return pick(hitsAd, (el) => marked(el, 'ad'));
+    if (k === 'adLock') return pick(hitsAd, locked);
+    if (k === 'floor') return pick(flipSets.floor, (el) => marked(el, 'flip'));
+    if (k === 'floorLock') return pick(flipSets.floor, locked);
+    if (k === 'live') return pick(flipSets.live, (el) => marked(el, 'flip'));
+    if (k === 'liveLock') return pick(flipSets.live, locked);
+    if (k === 'block') return pick(hitsBlock, (el) => marked(el, 'block'));
+    if (k === 'blockLock') return pick(hitsBlock, locked);
+    return 0;
+  }
+
+  /** 八档计数拼一行，用来判断菜单要不要重画 */
+  function statKeyNow() {
+    return Object.keys(DEFAULTS).map(countOf).join(',');
   }
 
   /** 诊断结论只分四档，避免“链接数一变就重画菜单”（重画会顺带读整份名单） */
@@ -1432,19 +1464,22 @@
 
   /** 翻转类生效时用方向图标代替勾，一眼就能看出朝哪翻；
       没生效时仍用原来的 ⬜（禁止点击那几行没有方向，继续用 ✅）
-      生效 = 「↕️ 首页广告位：上下翻转」/「↔️ 首页推荐位：左右翻转」 */
-  const switchLabel = (name, on, effect, off, icon) =>
-    (on ? (icon ? icon + ' ' : BOX_ON) : BOX_OFF) + name + '：' + (on ? effect : off);
+      行尾恒带「本页 N 张」：开着但 N=0 就是开了没命中，比只看图标分得清
+      生效 = 「↕️ 首页广告位：上下翻转（本页 2 张）」 */
+  const switchLabel = (name, on, effect, off, icon, n) =>
+    (on ? (icon ? icon + ' ' : BOX_ON) : BOX_OFF) + name + '：' + (on ? effect : off) +
+    '（本页 ' + n + ' 张）';
 
   function menuEnabled() {
     return hasGM && typeof GM_registerMenuCommand === 'function';
   }
 
-  function buildMenu() {
+  function buildMenu(light) {
     if (!menuEnabled()) return;
     // 人打开菜单的时刻，期望看到的就是最新名单：这里读一次整份并按它校正索引，
     // 所以手动改 bbm:blocked 也能在下次打开菜单时对上（轮询只读 uid 索引，碰不到整份）
-    if (refreshBlock()) applyNow();
+    // light=true 只重画「本页 N 张」这类计数，不读整份名单（计数每变一次都读 2.5 MB 受不了）
+    if (!light && refreshBlock()) applyNow();
     if (typeof GM_unregisterMenuCommand === 'function') {
       for (const id of MENU_IDS.splice(0)) {
         try { GM_unregisterMenuCommand(id); } catch (e) { /* 管理器不支持注销时忽略 */ }
@@ -1452,10 +1487,10 @@
     }
     const reg = (label, fn) => MENU_IDS.push(GM_registerMenuCommand(label, fn));
 
-    // A. 卡片开关（八档）：一行只说当前效果，点一下切到另一状态
+    // A. 卡片开关（八档）：一行只说当前效果 + 本页命中几张，点一下切到另一状态
     Object.keys(DEFAULTS).forEach((k) => {
       const item = LABELS[k];
-      reg(switchLabel(item.name, !!ENABLE[k], item.effect, item.off, item.icon), () => toggle(k));
+      reg(switchLabel(item.name, !!ENABLE[k], item.effect, item.off, item.icon, countOf(k)), () => toggle(k));
     });
 
     // B. UP 这一行是纯展示：点它没有任何反应，加/解全靠下面的理由标签
@@ -1498,6 +1533,9 @@
         reg('⚠️ 首页有卡片但一个都没认出（可能改版）', () => {});
       }
     }
+    // 这一版菜单已经把当前计数画进去了，记下基线：下一轮扫描若计数没变，就不必再重画
+    statKey = statKeyNow();
+    menuDirty = false;
   }
 
   function classCardCount() {
@@ -1512,8 +1550,10 @@
   function toggle(k) {
     ENABLE[k] = !ENABLE[k];
     save();
-    buildMenu(); // 重画菜单文字，反映新状态
-    applyNow(); // 立刻生效：关掉会摘标记，打开会补打
+    // 先按新开关重扫，再重画菜单：菜单行尾写着「本页 N 张」，
+    // 顺序反了就会出现「已关闭（本页 3 张）」这种自相矛盾的一行
+    applyNow();
+    buildMenu();
   }
 
   /** 兜底：路由变了（B 站是前端路由，同一个 tab 内换页不重载）就立刻重扫一次；
@@ -1532,7 +1572,7 @@
     if (moved || stale || (!VIDEO && cur)) resolveVideo(true);
     if (!isVideoPage() && VIDEO) { VIDEO = null; buildMenu(); }
     scanGuarded();
-    if (menuDirty) { menuDirty = false; buildMenu(); }
+    if (menuDirty) { menuDirty = false; buildMenu(true); }
   }
 
   /* ---------------------------------------------------------
@@ -1589,6 +1629,8 @@
     buildMenu();
     diagKey = diagState(); // 首轮扫描前就记下基线，避免开机后为“状态没变”多读一次整份
     scanGuarded(); // 首次同步扫，不等防抖，避免首屏广告卡多闪一拍
+    // 首扫之后计数才有值，立刻按计数重画一次，别让人等到下一个心跳才看到 N 张
+    if (menuDirty) buildMenu(true);
   }
 
   /* documentElement 尚未建立时（document-start 极早时机），

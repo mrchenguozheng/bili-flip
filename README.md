@@ -2,7 +2,7 @@
 
 一个只改「显示」的 Tampermonkey 用户脚本：把 B 站首页里不想看的卡片翻过来，不让它们好端端地待在那儿；再给你一份只存本机的 UP 屏蔽名单。
 
-![Tampermonkey](https://img.shields.io/badge/Tampermonkey-1.1.0-00b0ff) ![platform](https://img.shields.io/badge/platform-Edge%20%7C%20Chrome-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green)
+![Tampermonkey](https://img.shields.io/badge/Tampermonkey-1.2.0-00b0ff) ![platform](https://img.shields.io/badge/platform-Edge%20%7C%20Chrome-lightgrey) ![license](https://img.shields.io/badge/license-MIT-green)
 
 > **目标管理器：Tampermonkey（Edge / Chrome）。** 只用 `GM_*` 老接口与原生菜单。未适配 Violentmonkey（其 `GM_unregisterMenuCommand` 按菜单文字注销，本脚本按 id），也未适配 Greasemonkey 4（没有 `GM_registerMenuCommand`）。
 
@@ -78,6 +78,14 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@1.0.0/tampermonkey/bilibili
 | 首页屏蔽UP主 | 左右翻转 | 可选 |
 
 八档互相独立，没有“全部开启 / 全部关闭”。每档一行，写当前生效的那种效果；行首图标即状态：翻转生效时是方向图标（广告位 `↕️`、其余翻转 `↔️`），禁止点击生效时是 `✅`，关掉一律是 `⬜`。
+
+每行行尾还带这一档**在本页实际作用了几张卡**，例如 `↕️ 首页广告位：上下翻转（本页 2 张）`。这就是“这一档到底有没有在这张页面上生效”的直读答案，不必猜图标：
+
+- 开关开着、数字 > 0：这一档正在起作用，数字就是被处理的卡片数。
+- 开关开着、数字 0：这一档没问题，只是本页没有这类卡片（例如首页没有直播位）。
+- 开关关着：行首是 `⬜`，数字必然 0，因为效果已经摘掉了。
+
+数字随扫描更新，最多晚 3 秒（一次心跳）；卡片被信息流换掉、翻页、懒加载补进来时会自己变，不用去点菜单。一个数字对应一档：翻转和禁止点击各自计数，关掉翻转不会把禁点的数字带走。
 
 地址后加 `?bbm=off`，本页全部不生效，不改任何存储。
 
@@ -175,7 +183,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/bili-flip@1.0.0/tampermonkey/bilibili
 npm install
 npm run lint            # 检查写法
 npm run lint:fix        # 顺手修可自动修的
-npm test                # jsdom 回归，当前 189 条断言
+npm test                # jsdom 回归，当前 199 条断言
 npm run bump -- minor "这次改了什么"   # 版本号一次写齐：脚本、兜底常量、package.json、lock、CHANGELOG
 npm run version:check   # 只校验四处版本是否一致，不一致退出码非 0
 ```
@@ -219,7 +227,7 @@ A Tampermonkey userscript that changes only how the Bilibili home feed *looks*: 
 - Flips ad cards upside down (inverted gravity and lighting cues make them harder to recognise than a left-right flip).
 - Mirrors recommendation and live cards horizontally.
 - Mirrors any card posted by a UP on your local blocklist, with an optional click lock.
-- Eight independent toggles, one menu row each. The leading icon is the state: `↕️` / `↔️` for an active flip, `✅` for an active click lock, `⬜` for off.
+- Eight independent toggles, one menu row each. The leading icon is the state: `↕️` / `↔️` for an active flip, `✅` for an active click lock, `⬜` for off. Each row ends with the number of cards it acted on **on this page** (`(本页 2 张)`), so "on but nothing matched here" is distinguishable from "actually working" without guessing icons.
 - Falls back to card shape when Bilibili renames its CSS classes (A/B cohorts): a card is the outermost ancestor of a video link that still has at most three video links, a cover image and under 200 characters of text. If nothing matches, nothing is touched.
 
 ## What it does not do

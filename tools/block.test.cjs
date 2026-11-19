@@ -159,15 +159,17 @@ const CARD = (uid, name) =>
     log(!!m, '视频页注册了 UP 行', m && m.label);
     log(!!m && m.label === 'UP：张三；要屏蔽就点下面的理由', '未屏蔽时这一行写名字加提示', m && m.label);
 
-    // 菜单格式：类别：两个状态并列，当前那个打勾
+    // 菜单格式：类别：两个状态并列，当前那个打勾；行尾恒带本页命中数
     const labels = env.menus.map((x) => x.label);
-    log(!!env.menu(/^↕️ 首页广告位：上下翻转$/), '广告卡翻转：生效时用 ↕️ 标出方向');
-    log(!!env.menu(/^✅ 首页广告位：禁止点击$/), '广告卡点击：同一类别名 + 另一种状态');
+    log(!!env.menu(/^↕️ 首页广告位：上下翻转（本页 \d+ 张）$/), '广告卡翻转：生效时用 ↕️ 标出方向');
+    log(!!env.menu(/^✅ 首页广告位：禁止点击（本页 \d+ 张）$/), '广告卡点击：同一类别名 + 另一种状态');
     const flips = labels.filter((l) => /^(↕️|↔️) /.test(l));
     const checks = labels.filter((l) => /^✅ 首页/.test(l));
     log(flips.length === 4 && checks.length === 4, '四档翻转用方向图标、四档禁点仍用 ✅',
       flips.length + '/' + checks.length);
     log(flips.filter((l) => /↕️/.test(l)).length === 1, '只有广告位是 ↕️', flips.join(' | '));
+    log(labels.filter((l) => /（本页 \d+ 张）$/.test(l)).length === 8, '八档开关每行都写本页命中数',
+      labels.filter((l) => /（本页 \d+ 张）$/.test(l)).length + '');
     log(!env.menu(/全部开启|全部关闭/), '没有全局一键开关');
     log(!env.menu(/新增标签|删除标签/), '菜单里不再有新增/删除标签');
 
@@ -645,23 +647,23 @@ const CARD = (uid, name) =>
     log(card.getAttribute('data-bbm-lock') === '1', '默认也禁止点击');
 
     // 只关翻转：不翻了，但仍然禁点
-    env.menu(/^↔️ 首页屏蔽UP主：左右翻转$/).fn();
+    env.menu(/^↔️ 首页屏蔽UP主：左右翻转（本页 \d+ 张）$/).fn();
     log(card.getAttribute('data-bbm') === null, '关掉翻转后不再标记');
     log(card.getAttribute('data-bbm-lock') === '1', '关掉翻转但仍禁止点击');
-    log(env.menu(/^⬜ 首页屏蔽UP主：正常显示$/) !== undefined, '关掉后勾到"正常显示"上');
+    log(env.menu(/^⬜ 首页屏蔽UP主：正常显示（本页 \d+ 张）$/) !== undefined, '关掉后勾到"正常显示"上');
 
     // 再关禁点：连锁也没有了
-    env.menu(/^✅ 首页屏蔽UP主：禁止点击$/).fn();
+    env.menu(/^✅ 首页屏蔽UP主：禁止点击（本页 \d+ 张）$/).fn();
     log(card.getAttribute('data-bbm-lock') === null, '关掉禁止点击后卡片可点');
-    log(env.menu(/^⬜ 首页屏蔽UP主：可以点击$/) !== undefined, '点击那行变成可以点击');
+    log(env.menu(/^⬜ 首页屏蔽UP主：可以点击（本页 \d+ 张）$/) !== undefined, '点击那行变成可以点击');
 
     // 恢复翻转：翻回来，但仍可点
-    env.menu(/^⬜ 首页屏蔽UP主：正常显示$/).fn();
+    env.menu(/^⬜ 首页屏蔽UP主：正常显示（本页 \d+ 张）$/).fn();
     log(card.getAttribute('data-bbm') === 'block', '翻转恢复');
     log(card.getAttribute('data-bbm-lock') === null, '此时仍然可点');
 
     // 再开禁点
-    env.menu(/^⬜ 首页屏蔽UP主：可以点击$/).fn();
+    env.menu(/^⬜ 首页屏蔽UP主：可以点击（本页 \d+ 张）$/).fn();
     log(card.getAttribute('data-bbm-lock') === '1', '禁点恢复');
   }
 
@@ -693,6 +695,54 @@ const CARD = (uid, name) =>
     const c4 = e4.win.document.querySelector('.bili-live-card');
     log(c4.getAttribute('data-bbm') === null, '直播卡：关掉翻转后不翻');
     log(c4.getAttribute('data-bbm-lock') === '1', '直播卡：但仍在禁点');
+  }
+
+  /* ---------------- 7b. 菜单写着「本页 N 张」：看清每一档到底有没有在这张页面上生效 ---------------- */
+  {
+    const AD = '<div class="bili-video-card"><span class="badge">广告</span><div class="bili-video-card__info--tit">t</div></div>';
+    const LIVE = '<div class="bili-live-card"><a href="https://live.bilibili.com/123">直播</a></div>';
+    const FLOOR =
+      '<div class="floor-single-card"><div class="floor-card single-card">' +
+      '<div class="badge"><span class="floor-title">番剧</span></div></div></div>';
+    const store = { 'bbm:blocked': [{ uid: '12345', name: '张三', at: 1 }] };
+    const env = boot({
+      url: 'https://www.bilibili.com/',
+      html: '<body>' + AD + AD + LIVE + FLOOR + CARD('12345', '张三') + '</body>',
+      store,
+    });
+    await sleep(200);
+    const label = (re) => (env.menu(re) || {}).label;
+    log(label(/^↕️ 首页广告位：上下翻转/) === '↕️ 首页广告位：上下翻转（本页 2 张）', '计数：两张广告卡 = 2',
+      label(/^↕️ 首页广告位：上下翻转/));
+    log(label(/^✅ 首页广告位：禁止点击/) === '✅ 首页广告位：禁止点击（本页 2 张）', '计数：禁点那档也是 2');
+    log(label(/^↔️ 首页推荐位：左右翻转/) === '↔️ 首页推荐位：左右翻转（本页 1 张）', '计数：推荐位 1 张',
+      label(/^↔️ 首页推荐位：左右翻转/));
+    log(label(/^↔️ 首页直播位：左右翻转/) === '↔️ 首页直播位：左右翻转（本页 1 张）', '计数：直播位 1 张');
+    log(label(/^↔️ 首页屏蔽UP主：左右翻转/) === '↔️ 首页屏蔽UP主：左右翻转（本页 1 张）', '计数：屏蔽名单命中 1 张',
+      label(/^↔️ 首页屏蔽UP主：左右翻转/));
+
+    // 新插入一张广告卡：3 秒心跳后计数自己涨到 3，不需要人去点菜单
+    const fresh = env.win.document.createElement('div');
+    fresh.className = 'bili-video-card';
+    fresh.innerHTML = '<span class="badge">广告</span><div class="bili-video-card__info--tit">t</div>';
+    env.win.document.body.appendChild(fresh);
+    await sleep(3300);
+    log(label(/^↕️ 首页广告位：上下翻转/) === '↕️ 首页广告位：上下翻转（本页 3 张）', '计数：新卡片插入后自动涨到 3',
+      label(/^↕️ 首页广告位：上下翻转/));
+
+    // 关掉翻转那一档：翻转计数归零，禁点那一档不受影响
+    env.menu(/^↕️ 首页广告位：上下翻转/).fn();
+    await sleep(100);
+    log(label(/^⬜ 首页广告位：正常显示/) === '⬜ 首页广告位：正常显示（本页 0 张）', '关掉后翻转计数归零',
+      label(/^⬜ 首页广告位：正常显示/));
+    log(label(/^✅ 首页广告位：禁止点击/) === '✅ 首页广告位：禁止点击（本页 3 张）', '关翻转不影响禁点计数',
+      label(/^✅ 首页广告位：禁止点击/));
+
+    // 卡片全被移除：心跳把计数收回到 0
+    env.win.document.body.innerHTML = '';
+    await sleep(3300);
+    log(label(/^✅ 首页广告位：禁止点击/) === '✅ 首页广告位：禁止点击（本页 0 张）', '卡片移除后计数归零',
+      label(/^✅ 首页广告位：禁止点击/));
   }
 
   /* ---------------- 8. 未知设置键一律忽略 ---------------- */
