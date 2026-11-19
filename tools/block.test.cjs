@@ -866,12 +866,17 @@ const CARD = (uid, name) =>
     log(b1.getAttribute('data-bbm') === 'block', '类名失效：名单内卡片按形状认出并标记');
     log(feed.querySelectorAll('.v-card-x')[1].getAttribute('data-bbm') === null, '类名失效：名单外卡片不动');
     log(feed.getAttribute('data-bbm') === null, '类名失效：整块信息流容器没有被误标');
+    log(doc.body.getAttribute('data-bbm') === null, '类名失效：body 没有被当成一张卡');
 
     const ad = doc.querySelector('.ad-x');
     log(ad.getAttribute('data-bbm') === 'ad', '类名失效：广告卡按「广告」两字 + 形状认出');
     log(doc.querySelector('.v-card-y').getAttribute('data-bbm') === null, '类名失效：标题含「广告位」的普通卡不动');
 
-    log(doc.querySelector('.live-x').getAttribute('data-bbm') === 'flip', '类名失效：直播卡按链接形状兜底');
+    log(
+      doc.querySelector('.live-x').getAttribute('data-bbm') === 'flip',
+      '类名失效：直播卡按链接形状兜底',
+      String(doc.querySelector('.live-x').getAttribute('data-bbm'))
+    );
     log(doc.querySelector('.rec-x').getAttribute('data-bbm') === 'flip', '类名失效：推荐位按 data-mod 前缀兜底');
 
     // 依赖 3s 心跳：诊断结论变化后重建菜单，多出一行只在失效时出现的提示
@@ -903,6 +908,47 @@ const CARD = (uid, name) =>
     await sleep(200);
     log(loud.allLogs().includes('[bbm] 扫描诊断'), '带 bbm=debug 才打扫描诊断');
     log(!loud.allLogs().includes('12345'), '诊断不回显 uid');
+  }
+
+  /* ---------------- 15. 顶栏里的直播/视频入口不是卡片 ---------------- */
+  {
+    const store = { 'bbm:blocked': [{ uid: '12345', name: '张三', at: 1 }] };
+    const header =
+      '<header class="bili-header"><div class="right-entry">' +
+      '<a href="//live.bilibili.com/123"><img src="live.png"><span>直播</span></a>' +
+      '<a href="//www.bilibili.com/video/BV1xx411c7mD"><img src="v.png"><span>投稿</span></a>' +
+      '<a href="//space.bilibili.com/1"><img src="ava.png"><span>创作中心</span></a>' +
+      '</div></header>';
+
+    // 播放页：顶栏有「直播」入口，但没有一张卡 → 什么都不该翻
+    const video = boot({
+      url: 'https://www.bilibili.com/video/BV1f8sh6JEKj/',
+      html: '<body>' + header + '</body>',
+      store,
+    });
+    await sleep(200);
+    log(
+      video.win.document.querySelector('.right-entry').getAttribute('data-bbm') === null,
+      '播放页顶栏不会被翻（直播入口不是卡片）'
+    );
+
+    // 首页 + 类名全换：形状兜底上阵，仍然不该把顶栏一起翻
+    const renames =
+      '<div class="v-card-x"><a href="//www.bilibili.com/video/BV1xx411c7mD"><img src="c.jpg"><span>12:34</span></a>' +
+      '<a href="//space.bilibili.com/12345">张三</a></div>' +
+      '<div class="v-card-x"><a href="//www.bilibili.com/video/BV1xx411c7mE"><img src="c2.jpg"><span>05:20</span></a>' +
+      '<a href="//space.bilibili.com/99999">路人</a></div>' +
+      '<div class="v-card-x"><a href="//www.bilibili.com/video/BV1xx411c7mF"><img src="c3.jpg"><span>08:08</span></a>' +
+      '<a href="//space.bilibili.com/88888">补位</a></div>';
+    const home = boot({
+      url: 'https://www.bilibili.com/',
+      html: '<body>' + header + renames + '</body>',
+      store,
+    });
+    await sleep(200);
+    const doc = home.win.document;
+    log(doc.querySelector('.right-entry').getAttribute('data-bbm') === null, '首页顶栏的直播入口不会被当成卡翻过去');
+    log(doc.querySelectorAll('.v-card-x')[0].getAttribute('data-bbm') === 'block', '顶栏存在时卡片照常按形状命中');
   }
 
   // jsdom 的计时器会让进程常驻，断言跑完直接收工

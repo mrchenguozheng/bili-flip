@@ -51,7 +51,7 @@ tampermonkey/
 | 头部元数据 | `@name` / `@namespace` / `@version` / `@updateURL` / `@downloadURL` / `@icon` | `@updateURL` 固定用 jsDelivr `@main`；写成 `@<tag>` 等于关掉自动更新 |
 | 设置层 | `DEFAULTS`、`LABELS`、`load` / `save`、`KEY='bbm:settings'` | 新增开关要同时补 `DEFAULTS` 与 `LABELS`（`name`/`effect`/`off`，翻转类加 `icon`） |
 | 标记与选择器 | `MARK='data-bbm'`、`LOCK='data-bbm-lock'`、`CARD`、`CARD_WRAP`、`LIVE_CARD`、`FLOOR_TITLE` | 选择器随 B 站改版失效；三类卡片各留兜底路径 |
-| 形状兜底 | `VIDEO_LINK`、`SHAPE_DEPTH`、`SHAPE_MAX_LINKS`、`SHAPE_MAX_TEXT`、`shapeCardFrom()`、`shapeAdCardFrom()`、`cardClassMissing()` | 只在「有视频链接但零 `CARD`」时启用，平时零成本；判定条件是“链接 ≤3、有 img、文字 ≤200”，放宽会出现整排卡片被当成一张 |
+| 形状兜底 | `VIDEO_LINK`、`LIVE_LINK`、`SHAPE_DEPTH`、`SHAPE_MAX_LINKS`、`SHAPE_MAX_ANCHORS`、`SHAPE_MAX_IMAGES`、`SHAPE_MAX_TEXT`、`isChrome()`、`shapeCardFrom(seed, linkSel)`、`shapeAdCardFrom()`、`cardClassMissing()` | 只在首页且「有视频链接但零 `CARD`」时启用；判定是“同类链接 ≤3、整层链接 ≤5、图片 ≤3、有 img、文字 ≤200”，顶栏/页头/导航直接排除。任一条放宽都会出现整排甚至整页被翻 |
 | 调度器 | `tasks` / `every()` / `arm()` / `fire()` / `bind()` | 全页只有一个 `setTimeout`；`document.hidden` 暂停、切回补跑；任务抛错不影响其它任务 |
 | 扫描 | `paint()`、`collectAdCards()`、`collectFlipCards()`、`collectBlockCards()`、`scanGuarded()`、`shutDown()`、`diagState()` | 用 Set 差集做增量；连续三次抛错会摘掉全部标记把页面还给 B 站；`shapeHits` 每轮重置，`diagKey` 只分四档 |
 | 观察者 | `observer` + `relevant()` + `schedule()` | 只认 `CARD` / `CARD_WRAP` 子树内的 `childList` 与 `class` / `href` 变化，140ms 合批 |
@@ -71,7 +71,8 @@ tampermonkey/
 - **索引与整份的先后**：`saveBlock()` 先写整份再写索引；只改一处会让下一次轮询误判或重建菜单。
 - **菜单重建的时机**：`buildMenu()` 开头会 `refreshBlock()`，所以手动改 `bbm:blocked` 时，打开一次菜单即对齐——但轮询不会替你发现整份变了。
 - **别在 `scan()` 里直接重画菜单**：`buildMenu()` 会读整份名单，直接调用会让“轮询阶段整份零读”这条契约失效。扫描只置 `menuDirty`，由 `heartbeat()` 消费；`diagKey` 开机前先按 `diagState()` 记基线，避免为“状态没变”白读一次。
-- **形状兜底别外扩**：`SHAPE_MAX_LINKS` / `SHAPE_MAX_TEXT` 是防止把整块信息流当成一张卡的唯一闸门。放开它们会让“整排一起翻”，这比不兜底更糟。
+- **形状兜底别外扩**：`SHAPE_MAX_LINKS` / `SHAPE_MAX_ANCHORS` / `SHAPE_MAX_IMAGES` / `SHAPE_MAX_TEXT` 是防止把整块容器甚至整页当成一张卡的闸门。历史上只按“同类链接数”判过一次，结果播放页顶栏里那个「直播」入口让整页被翻——同类链接数挡不住只有一条链接的页面级容器。
+- **兜底只能在首页跑**：`collectFlipCards` / `collectAdCards` / `collectBlockCards` 里的形状路径都要先过 `isHomeFeed()`；播放页有推荐列，类名一失效就会误伤。
 - **口令框是明文 `prompt`**：密码管理器认不到、也填不进来，这是已知代价（用户明确接受）。不要偷偷换成页面内 `input[type=password]`——那等于自绘 UI。
 - **导入严格校验**：多一个字段整份拒绝并点名字段。这条是为了挡住“有人把密码顺手写进同一份 JSON”。放宽它等于拆掉这个防护。
 - **改导出结构**：`exportBlock()` 里有 `v: 3` 与 `tags` 数组；改字段名要同时改 `shapeError` 的白名单、README 的导出表和 CHANGELOG。
@@ -87,11 +88,11 @@ npm run lint
 npm test
 ```
 
-- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **180 PASS / 0 FAIL**。
+- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **184 PASS / 0 FAIL**。
 - 回归就是仓库里的 `tools/block.test.cjs`：jsdom 把整份脚本跑起来，喂假存储 / 假菜单 / 假 prompt，覆盖开关、翻转换算、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密、A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、`?bbm=debug` 静默性。断言以 `PASS` / `FAIL` 开头，失败时退出码非 0。
 - 加断言就照现有风格在后面续一组：`log(条件, '断言名', '补充值')`，别改已有断言名，方便对比历史基线。
 - ESLint 只约束 `tampermonkey/*.user.js`；`tools/` 是 Node 脚本，不在 lint 范围，写它时按 Node 习惯来（`require`、`fs`、`__dirname`）。
-- 改逻辑必须让 `npm test` 仍是 180 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
+- 改逻辑必须让 `npm test` 仍是 184 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
 - 验证“装了却不生效”的经典三连：篡改猴「允许的站点」是否含 `www.bilibili.com`；地址是否是首页 `/` 或 `/index.html`；文件是不是从 jsDelivr 装的（raw 是 `text/plain`，不会触发安装）。
 
 ## 6. 发布流程

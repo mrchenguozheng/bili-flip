@@ -20,5 +20,5 @@
 - 菜单只在“类名认不出卡片、已按形状兜底”或“有卡片但一个都没认出”时多出一行 `⚠️` 提示，正常页面没有这一行；`?bbm=debug` 时控制台打一行扫描诊断（只有计数，不含名单内容）。
 - 不往控制台输出用户可见信息；控制台只剩内部异常（周期任务抛错、扫描失败、连续失败停机）与 `?bbm=debug` 的诊断。
 - 仓库附 `package.json` 与 `eslint.config.mjs`，`npm run lint` 走 `@eslint/js` recommended + `no-multi-spaces` 等少量硬约束。
-- 回归测试在 `tools/block.test.cjs`，`npm test` 用 jsdom 跑 180 条断言（开关、标记、屏蔽匹配、双键与索引自愈、分档轮询、导出/导入/加密、老类名与“类名全换只剩形状”两套 DOM、`?bbm=debug` 静默性）。
+- 回归测试在 `tools/block.test.cjs`，`npm test` 用 jsdom 跑 184 条断言（开关、标记、屏蔽匹配、双键与索引自愈、分档轮询、导出/导入/加密、老类名与“类名全换只剩形状”两套 DOM、`?bbm=debug` 静默性）。
 - 发布用 git tag 标版本（当前 `1.0.0`），jsDelivr 的 `@1.0.0` 地址可取到这份固定内容。

@@ -101,7 +101,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 - **直播位**：`.bili-live-card`，或卡内存在指向 `live.bilibili.com` 的链接。
 - **屏蔽名单**：只按 uid 匹配。
 
-类名整批换掉（A/B 灰度、改版）时，还有一层**形状兜底**：只在「页面上明显有视频链接、却一个 `.bili-video-card` 都没有」时启用，沿链接向上爬，取「视频链接不超过 3 个、有封面图、文字不超过 200 字」的最外层当作整张卡。认不出就不动，不做猜测。
+类名整批换掉（A/B 灰度、改版）时，还有一层**形状兜底**：只在「页面上明显有视频链接、却一个 `.bili-video-card` 都没有」时启用，沿链接向上爬，取「同类链接不超过 3 个、整层链接不超过 5 个、图片不超过 3 张、有封面图、文字不超过 200 字」的最外层当作整张卡；顶栏、页头、导航直接排除。认不出就不动，不做猜测。
 
 ## 数据与隐私
 
@@ -173,7 +173,7 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 npm install
 npm run lint       # 检查写法
 npm run lint:fix   # 顺手修可自动修的
-npm test           # jsdom 回归，当前 180 条断言
+npm test           # jsdom 回归，当前 184 条断言
 ```
 
 规则只有几条硬约束：`@eslint/js` recommended 全套、`no-multi-spaces`（对齐的行尾注释只能有一个空格）、`no-empty` 放行空 `catch`、`no-var`、`no-unused-vars` 不追究未用参数。篡改猴注入的全局（`GM_getValue` 等）在 `eslint.config.mjs` 里按 `@grant` 列表声明，浏览器全局取 `globals.browser`。

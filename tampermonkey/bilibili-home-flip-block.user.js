@@ -248,17 +248,34 @@
    * 认不出就返回空：宁可不动，也不猜着翻别人一整排。
    * ------------------------------------------------------- */
   const VIDEO_LINK = 'a[href*="/video/"]';
+  const LIVE_LINK = 'a[href*="live.bilibili.com"]';
   const SHAPE_DEPTH = 6; // 从链接向上最多爬几层
-  const SHAPE_MAX_LINKS = 3; // 一层里视频链接不超过这个数，才算单张卡
+  const SHAPE_MAX_LINKS = 3; // 一层里同类链接不超过这个数，才算单张卡
+  const SHAPE_MAX_ANCHORS = 5; // 整层链接总数上限：顶栏、页头、信息流都会超
+  const SHAPE_MAX_IMAGES = 3; // 整层图片上限：整块容器图片更多
   const SHAPE_MAX_TEXT = 200; // 单张卡可见文字长度上限，挡住整块信息流
 
-  function shapeCardFrom(seed) {
+  /** 顶栏、页头、导航不是卡片；B 站播放页顶部那排图标就栽在这里过 */
+  function isChrome(el) {
+    return !!(el.closest && el.closest('header, nav, .bili-header, .international-header, .mini-header'));
+  }
+
+  /** linkSel 决定“同类链接”是哪一种：视频卡数 /video/，直播卡数 live.bilibili.com */
+  function shapeCardFrom(seed, linkSel) {
+    const sel = linkSel || VIDEO_LINK;
     let el = seed;
     let best = null;
     for (let i = 0; i < SHAPE_DEPTH; i++) {
       el = el && el.parentElement;
       if (!el) break;
-      if (el.querySelectorAll(VIDEO_LINK).length > SHAPE_MAX_LINKS) break;
+      if (isChrome(el)) break;
+      const links = el.querySelectorAll(sel).length;
+      if (!links) continue; // 这一层根本不含同类链接，继续往上找
+      if (links > SHAPE_MAX_LINKS) break; // 再往上就是整排信息流
+      // 链接、图片总数同时设上限：页面里只剩一个直播链接时，
+      // 光靠“同类链接数”挡不住 body / 顶栏，它们会被一路认成“一张卡”
+      if (el.querySelectorAll('a').length > SHAPE_MAX_ANCHORS) break;
+      if (el.querySelectorAll('img').length > SHAPE_MAX_IMAGES) break;
       if (!el.querySelector('img')) continue;
       if ((el.textContent || '').trim().length > SHAPE_MAX_TEXT) break;
       best = el;
@@ -270,6 +287,7 @@
   function shapeAdCardFrom(node) {
     let el = node && node.parentElement;
     for (let i = 0; i < SHAPE_DEPTH && el; i++) {
+      if (isChrome(el)) break;
       if (
         el.querySelector('img') &&
         el.querySelector('a') &&
@@ -417,10 +435,12 @@
     if (ENABLE.live || ENABLE.liveLock) {
       document.querySelectorAll(LIVE_CARD).forEach((el) => { all.add(el); liveSet.add(el); });
 
-      // 直播卡片（链接兜底）：先按老类名容器取，取不到再按形状爬
-      const missing = cardClassMissing();
-      document.querySelectorAll('a[href*="live.bilibili.com"]').forEach((a) => {
-        const card = a.closest(CARD_WRAP) || shapeCardFrom(a);
+      // 直播卡片（链接兜底）：先按老类名容器取；类名整批失效时再按形状爬。
+      // 形状兜底只在首页、且确实一张类名卡片都没有时才跑——
+      // 否则播放页顶栏里那个「直播」入口会被当成一张卡翻过去。
+      const missing = isHomeFeed() && cardClassMissing();
+      document.querySelectorAll(LIVE_LINK).forEach((a) => {
+        const card = a.closest(CARD_WRAP) || (missing ? shapeCardFrom(a, LIVE_LINK) : null);
         if (!card) return;
         all.add(card);
         liveSet.add(card);
@@ -439,7 +459,7 @@
       });
 
       document.querySelectorAll('[data-mod^="partition_recommend"]').forEach((el) => {
-        const card = outerFloorCard(el) || shapeCardFrom(el);
+        const card = outerFloorCard(el) || (isHomeFeed() ? shapeCardFrom(el) : null);
         if (card) { all.add(card); floorSet.add(card); }
       });
     }
@@ -453,7 +473,7 @@
     document.querySelectorAll(CARD).forEach((card) => {
       if (hasAdWord(card)) next.add(card);
     });
-    if (cardClassMissing()) {
+    if (isHomeFeed() && cardClassMissing()) {
       // 类名失效时的广告识别：仍然只认「整串等于广告」的文本节点，再按形状找卡片
       const root = document.body || document.documentElement;
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
