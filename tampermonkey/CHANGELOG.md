@@ -18,4 +18,5 @@
 - 名单拆两个键：`bbm:blocked` 整份、`bbm:blocked:uids` 一行 uid 索引；轮询只读索引，整份在启动/菜单/导入/清空时读，索引对不上按整份重写。
 - 不往控制台输出用户可见信息；控制台只剩内部异常（周期任务抛错、扫描失败、连续失败停机）。
 - 仓库附 `package.json` 与 `eslint.config.mjs`，`npm run lint` 走 `@eslint/js` recommended + `no-multi-spaces` 等少量硬约束。
+- 回归测试在 `tools/block.test.cjs`，`npm test` 用 jsdom 跑 166 条断言（开关、标记、屏蔽匹配、双键与索引自愈、分档轮询、导出/导入/加密）。
 - 发布用 git tag 标版本（当前 `1.0.0`），jsDelivr 的 `@1.0.0` 地址可取到这份固定内容。

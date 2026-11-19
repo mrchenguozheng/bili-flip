@@ -10,10 +10,12 @@
   },
   "scripts": {
     "lint": "eslint",
-    "lint:fix": "eslint --fix"
+    "lint:fix": "eslint --fix",
+    "test": "node tools/block.test.cjs"
   },
   "devDependencies": {
     "eslint": "^9.0.0",
-    "globals": "^16.0.0"
+    "globals": "^16.0.0",
+    "jsdom": "^31.0.1"
   }
 }

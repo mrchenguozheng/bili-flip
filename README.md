@@ -10,8 +10,11 @@
 
 ```
 README.md                          本文件
+AGENTS.md                          维护指南（改代码前先读）
 eslint.config.mjs                  ESLint 配置（只约束 tampermonkey/ 下的脚本）
-package.json                       仅 devDependencies：eslint、globals
+package.json                       仅 devDependencies：eslint、globals、jsdom
+tools/
+  block.test.cjs                   jsdom 回归（npm test）
 tampermonkey/
   bilibili-home-flip-block.user.js  脚本本体（唯一需要安装的文件）
   CHANGELOG.md                      版本记录
@@ -161,17 +164,20 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 
 ## 开发与校验
 
-改脚本前先装依赖（只装 ESLint，不参与运行）：
+改脚本前先装依赖（ESLint 与 jsdom 都只在本地跑，不参与脚本运行）：
 
 ```sh
 npm install
-npm run lint       # 检查
+npm run lint       # 检查写法
 npm run lint:fix   # 顺手修可自动修的
+npm test           # jsdom 回归，当前 166 条断言
 ```
 
 规则只有几条硬约束：`@eslint/js` recommended 全套、`no-multi-spaces`（对齐的行尾注释只能有一个空格）、`no-empty` 放行空 `catch`、`no-var`、`no-unused-vars` 不追究未用参数。篡改猴注入的全局（`GM_getValue` 等）在 `eslint.config.mjs` 里按 `@grant` 列表声明，浏览器全局取 `globals.browser`。
 
-改完至少跑一遍 `node --check tampermonkey/bilibili-home-flip-block.user.js` 和 `npm run lint`；两者都干净再提交。
+`npm test` 跑的是 [`tools/block.test.cjs`](tools/block.test.cjs)：用 jsdom 把整份脚本装进一个假页面，喂假存储与假菜单，断言开关行为、三类卡片的标记、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密的字段校验。每条结果以 `PASS` / `FAIL` 开头，有失败时退出码非 0。它不覆盖真实浏览器里的渲染与篡改猴菜单外观——那部分仍要在 Edge 上手动看一眼。
+
+改完至少跑 `node --check tampermonkey/bilibili-home-flip-block.user.js`、`npm run lint` 和 `npm test`；全干净再提交。
 
 ## 兼容性
 
