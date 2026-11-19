@@ -173,14 +173,18 @@ https://cdn.jsdelivr.net/gh/mrchenguozheng/Bilibili-Home-Flip-Block@1.0.0/tamper
 
 ```sh
 npm install
-npm run lint       # 检查写法
-npm run lint:fix   # 顺手修可自动修的
-npm test           # jsdom 回归，当前 187 条断言
+npm run lint            # 检查写法
+npm run lint:fix        # 顺手修可自动修的
+npm test                # jsdom 回归，当前 189 条断言
+npm run bump -- minor "这次改了什么"   # 版本号一次写齐：脚本、兜底常量、package.json、lock、CHANGELOG
+npm run version:check   # 只校验四处版本是否一致，不一致退出码非 0
 ```
 
 规则只有几条硬约束：`@eslint/js` recommended 全套、`no-multi-spaces`（对齐的行尾注释只能有一个空格）、`no-empty` 放行空 `catch`、`no-var`、`no-unused-vars` 不追究未用参数。篡改猴注入的全局（`GM_getValue` 等）在 `eslint.config.mjs` 里按 `@grant` 列表声明，浏览器全局取 `globals.browser`。
 
-`npm test` 跑的是 [`tools/block.test.cjs`](tools/block.test.cjs)：用 jsdom 把整份脚本装进一个假页面，喂假存储与假菜单，断言开关行为、三类卡片的标记、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密的字段校验。每条结果以 `PASS` / `FAIL` 开头，有失败时退出码非 0。它不覆盖真实浏览器里的渲染与篡改猴菜单外观——那部分仍要在 Edge 上手动看一眼。
+`npm test` 跑的是 [`tools/block.test.cjs`](tools/block.test.cjs)：用 jsdom 把整份脚本装进一个假页面，喂假存储与假菜单，断言开关行为、三类卡片的标记、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密的字段校验，以及版本号是否齐平（脚本 `@version`、兜底常量、`package.json`、`package-lock.json`、CHANGELOG）。每条结果以 `PASS` / `FAIL` 开头，有失败时退出码非 0。它不覆盖真实浏览器里的渲染与篡改猴菜单外观——那部分仍要在 Edge 上手动看一眼。
+
+版本号不要手改：跑 `npm run bump`，它会把五处一次写完并自检；`npm run version:check` 可单独校验。
 
 改完至少跑 `node --check tampermonkey/bilibili-home-flip-block.user.js`、`npm run lint` 和 `npm test`；全干净再提交。
 

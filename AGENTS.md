@@ -85,7 +85,7 @@ tampermonkey/
 - **口令框是明文 `prompt`**：密码管理器认不到、也填不进来，这是已知代价（用户明确接受）。不要偷偷换成页面内 `input[type=password]`——那等于自绘 UI。
 - **导入严格校验**：多一个字段整份拒绝并点名字段。这条是为了挡住“有人把密码顺手写进同一份 JSON”。放宽它等于拆掉这个防护。
 - **改导出结构**：`exportBlock()` 里有 `v: 3` 与 `tags` 数组；改字段名要同时改 `shapeError` 的白名单、README 的导出表和 CHANGELOG。
-- **`@version` 与 tag 要一起动**：`SCRIPT_VERSION` 从 `GM_info` 读，兜底写死 `'1.0.0'`；发版漏改兜底值，加密包里写的版本号就会撒谎。
+- **`@version` 与 tag 要一起动**：`SCRIPT_VERSION` 从 `GM_info` 读，兜底常量写死在脚本里；发版漏改兜底值，加密包里写的版本号就会撒谎。用 `npm run bump` 就不会漏——手改是唯一会漏的路径。
 - **Windows 上编辑**：文件是 UTF-8 无 BOM、LF。用能保留行尾的工具写，别让 CRLF 混进 `.user.js`。
 
 ## 5. 改完必须跑
@@ -97,21 +97,32 @@ npm run lint
 npm test
 ```
 
-- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **187 PASS / 0 FAIL**。
+- 基线：`node --check` 通过、`npm run lint` **0 问题**、`npm test` **189 PASS / 0 FAIL**。
 - 回归就是仓库里的 `tools/block.test.cjs`：jsdom 把整份脚本跑起来，喂假存储 / 假菜单 / 假 prompt，覆盖开关、翻转换算、屏蔽匹配、双存储键与索引自愈、分档轮询、导出/导入/加密、A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、`?bbm=debug` 静默性。断言以 `PASS` / `FAIL` 开头，失败时退出码非 0。
 - 加断言就照现有风格在后面续一组：`log(条件, '断言名', '补充值')`，别改已有断言名，方便对比历史基线。
 - ESLint 只约束 `tampermonkey/*.user.js`；`tools/` 是 Node 脚本，不在 lint 范围，写它时按 Node 习惯来（`require`、`fs`、`__dirname`）。
-- 改逻辑必须让 `npm test` 仍是 187 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
+- 改逻辑必须让 `npm test` 仍是 189 PASS（新增断言则同步更新本文件与 README 里的数字）；只改注释或文档时跑前两条即可。
 - 验证“装了却不生效”的经典三连：篡改猴「允许的站点」是否含 `www.bilibili.com`；地址是否是首页 `/` 或 `/index.html`；文件是不是从 jsDelivr 装的（raw 是 `text/plain`，不会触发安装）。
 
 ## 6. 发布流程
 
 **版本号只升不降，每次改动都要递增。** 新功能或行为变化记 minor（`1.1.0`），修 bug 记 patch（`1.1.1`），破坏性重写才动 major。一次改动没升版本号，就不算完成。
 
-改版本号要同时改四处，缺一处 `npm test` 会红：`@version`、`SCRIPT_VERSION` 的兜底常量、`package.json`（含 `package-lock.json` 的根 `version`）、`CHANGELOG.md` 顶部新条目。
+**不要手改版本号。** 版本号散在四处（`@version`、`SCRIPT_VERSION` 兜底常量、`package.json`、`package-lock.json` 根版本）加 `CHANGELOG.md` 顶部条目，漏一处就等于发了个“版本号撒谎”的包。统一走：
 
-1. 改 `@version`（同时改 `scriptVersion` 兜底值、`package.json`、追加 CHANGELOG 条目）。
-2. 更新 `CHANGELOG.md` 顶部条目的日期与内容；README 里若涉及行为变化同步改。
+```sh
+npm run bump -- patch "一句话说清改了什么"   # 1.1.0 → 1.1.1
+npm run bump -- minor "新增X"                # 1.1.0 → 1.2.0
+npm run bump -- 1.2.3 "说明"                 # 指定版本
+npm run version:check                        # 只校验，不一致退出码非 0
+```
+
+`tools/bump-version.cjs` 一次写全五处并自检，`npm test` 里也调它的 `checkConsistency()`，漏改直接 FAIL。
+
+注意两点：同一个**尚未打 tag** 的版本可以继续追加 CHANGELOG 条目（还在组装阶段）；一旦该版本已经 tag 过，任何新改动都必须先 bump 出新版本号。
+
+1. `npm run bump -- <类型> "说明"`（自动改齐五处并插入 CHANGELOG 条目）。
+2. 把 CHANGELOG 那条写实、写全；README 里若涉及行为变化同步改。
 3. `node --check` + `npm run lint` + 回归全过（在 `dev` 上）。
 4. `git push origin dev`，确认远端 `dev` 就是待发布内容。
 5. 发布只做一次快进，不要在 `main` 上叠提交：

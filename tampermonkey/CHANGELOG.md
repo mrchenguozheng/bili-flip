@@ -8,7 +8,8 @@
 - 形状兜底只在首页、且确实零 `.bili-video-card` 时才启用；顶栏、页头、导航直接排除，避免把播放页的「直播」入口翻成一整栏。
 - 菜单只在“类名认不出卡片、已按形状兜底”或“有卡片但一个都没认出”时多出一行 `⚠️` 提示，正常页面没有这一行。
 - 新增 `?bbm=debug`：带参数时控制台打一行扫描诊断（只有计数，不含 uid / 标题 / 名单）。
-- 回归测试扩到 187 条：补 A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、顶栏误伤、`?bbm=debug` 静默性，以及版本号一致性（脚本 `@version`、兜底常量、`package.json`、本文件）。
+- 回归测试扩到 189 条：补 A/B 双形态（老类名 DOM 与“类名全换只剩形状”的 DOM）、顶栏误伤、`?bbm=debug` 静默性，以及版本号一致性（脚本 `@version`、兜底常量、`package.json`、本文件）。
+- 版本号自动化：`npm run bump -- <patch|minor|major|x.y.z> "说明"` 一次写齐脚本 `@version`、`SCRIPT_VERSION` 兜底、`package.json`、`package-lock.json` 与本文件顶部条目；`npm run version:check` 只校验。手改版本号不再必要。
 
 ## 1.0.0 — 2026-11-19
 
