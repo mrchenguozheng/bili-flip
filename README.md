@@ -10,10 +10,14 @@
 
 ```
 README.md                          本文件
+eslint.config.mjs                  ESLint 配置（只约束 tampermonkey/ 下的脚本）
+package.json                       仅 devDependencies：eslint、globals
 tampermonkey/
   bilibili-home-flip-block.user.js  脚本本体（唯一需要安装的文件）
   CHANGELOG.md                      版本记录
 ```
+
+用户装脚本不需要 `npm`；下面这套只给改代码的人用。
 
 ## 关于
 
@@ -139,6 +143,20 @@ tampermonkey/
 - 加密包的强度取决于口令。12 位且符合规则的人造口令（“词+年+符号”这类结构）面对定向攻击仍可能被模式字典在数小时内试完；真随机的 12 位则是物理上做不完的量级。
 - 文件大小与条目数量大致成正比，加密包不隐藏“名单有几条”。
 - 名单条数影响的是存储读写与内存，不影响扫描频率；一万条量级仍属轻负载，十万条开始明显变重。
+
+## 开发与校验
+
+改脚本前先装依赖（只装 ESLint，不参与运行）：
+
+```sh
+npm install
+npm run lint       # 检查
+npm run lint:fix   # 顺手修可自动修的
+```
+
+规则只有几条硬约束：`@eslint/js` recommended 全套、`no-multi-spaces`（对齐的行尾注释只能有一个空格）、`no-empty` 放行空 `catch`、`no-var`、`no-unused-vars` 不追究未用参数。篡改猴注入的全局（`GM_getValue` 等）在 `eslint.config.mjs` 里按 `@grant` 列表声明，浏览器全局取 `globals.browser`。
+
+改完至少跑一遍 `node --check tampermonkey/bilibili-home-flip-block.user.js` 和 `npm run lint`；两者都干净再提交。
 
 ## 兼容性
 

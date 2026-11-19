@@ -17,3 +17,4 @@
 - 扫描固定 3 秒；读名单按条数分档（≤1k 3 秒、≤5k 10 秒、≤20k 30 秒、更多 60 秒），只读到不同 uid 集合才重扫并重画菜单。
 - 名单拆两个键：`bbm:blocked` 整份、`bbm:blocked:uids` 一行 uid 索引；轮询只读索引，整份在启动/菜单/导入/清空时读，索引对不上按整份重写。
 - 不往控制台输出用户可见信息；控制台只剩内部异常（周期任务抛错、扫描失败、连续失败停机）。
+- 仓库附 `package.json` 与 `eslint.config.mjs`，`npm run lint` 走 `@eslint/js` recommended + `no-multi-spaces` 等少量硬约束。

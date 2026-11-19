@@ -106,7 +106,6 @@
     block: { name: '首页屏蔽UP主', effect: '左右翻转', off: '正常显示', icon: '↔️' },
     blockLock: { name: '首页屏蔽UP主', effect: '禁止点击', off: '可以点击' },
   };
-  const OFF_EFFECT = '正常显示';
   const KEY = 'bbm:settings';
   const hasGM = typeof GM_getValue === 'function' && typeof GM_setValue === 'function';
 
